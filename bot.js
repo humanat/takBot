@@ -62,14 +62,15 @@ client.on('message', msg => {
                 if (msg.mentions.users.array().length != 1) {
                     msg.channel.send('You must mention exactly one user as your opponent.');
                 } else {
-                    let userId = msg.mentions.users.first().id;
+                    let player1 = msg.mentions.users.first();
+                    let player2 = msg.author;
                     let canvas = TPStoCanvas({
                         tps: args[1],
-                        player1: players[0],
-                        player2: players[1],
+                        player1: player1.displayName,
+                        player2: player2.displayName,
                         theme
                     });
-                    let tpsHash = userId + '_' + msg.author.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
+                    let tpsHash = player1.id + '_' + player2.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
                     tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
                     let filename = msg.channel.id + '.png';
                     let out = fs.createWriteStream(filename);
@@ -128,13 +129,21 @@ client.on('message', msg => {
                     return;
                 }
 
+                let player1, player2;
+                msg.channel.guild.members.fetch(players[0])
+                .then(member => player1 = member)
+                .catch(console.error);
+                msg.channel.guild.members.fetch(players[1])
+                .then(member => player2 = member)
+                .catch(console.error);
+
                 let canvas;
                 try {
                     canvas = TPStoCanvas({
                         tps: tps,
                         ply: cmd,
-                        player1: players[0],
-                        player2: players[1],
+                        player1: player1.displayName,
+                        player2: player2.displayName,
                         theme
                     });
                 } catch {
