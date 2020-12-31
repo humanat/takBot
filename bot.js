@@ -2,6 +2,7 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const lzutf8 = require('lzutf8');
 const auth = require('./auth.json');
+const theme = "discord";
 const {TPStoCanvas} = require('./TPS-Ninja/src');
 
 const client = new Discord.Client();
@@ -62,16 +63,7 @@ client.on('message', msg => {
                     msg.channel.send('You must mention exactly one user as your opponent.');
                 } else {
                     let userId = msg.mentions.users.first().id;
-                    let canvas;
-                    switch(args[1]) {
-                        case '5':
-                            canvas = TPStoCanvas({'tps': 'x5-x5-x5-x5-x5 1 1'});
-                            break;
-                        case '6':
-                        default:
-                            canvas = TPStoCanvas({'tps': 'x6-x6-x6-x6-x6-x6 1 1'});
-                            break;
-                    }
+                    let canvas = TPStoCanvas({tps: args[1], theme});
                     let tpsHash = userId + '_' + msg.author.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
                     tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
                     let filename = msg.channel.id + '.png';
@@ -133,7 +125,7 @@ client.on('message', msg => {
 
                 let canvas;
                 try {
-                    canvas = TPStoCanvas({'tps': tps, 'ply': cmd});
+                    canvas = TPStoCanvas({'tps': tps, 'ply': cmd, theme});
                 } catch {
                     msg.channel.send('Invalid move.');
                     return;
