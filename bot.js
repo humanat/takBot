@@ -64,11 +64,16 @@ client.on('message', msg => {
                 } else {
                     let player1 = msg.mentions.users.first();
                     let player2 = msg.author;
+                    let size = (args[1]) ? args[1] : '6';
+                    if (size !== '3' && size !== '4' && size !== '5' && size !== '6' && size !== '7' && size !== '8') {
+                        msg.channel.send('Invalid board size.');
+                        return;
+                    }
                     let canvas = TPStoCanvas({
-                        tps: args[1],
-                        player1: player1.displayName,
-                        player2: player2.displayName,
-                        theme
+                        'tps': size,
+                        'player1': player1.username,
+                        'player2': player2.username,
+                        'theme': theme
                     });
                     let tpsHash = player1.id + '_' + player2.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
                     tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
@@ -140,11 +145,11 @@ client.on('message', msg => {
                 let canvas;
                 try {
                     canvas = TPStoCanvas({
-                        tps: tps,
-                        ply: cmd,
-                        player1: player1.displayName,
-                        player2: player2.displayName,
-                        theme
+                        'tps': tps,
+                        'ply': cmd,
+                        'player1': player1.displayName,
+                        'player2': player2.displayName,
+                        'theme': theme
                     });
                 } catch {
                     msg.channel.send('Invalid move.');
