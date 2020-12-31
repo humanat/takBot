@@ -1,0 +1,3 @@
+[submodule "TPS-Ninja"]
+	path = TPS-Ninja
+	url = https://github.com/gruppler/TPS-Ninja.git
