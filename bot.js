@@ -63,7 +63,12 @@ client.on('message', msg => {
                     msg.channel.send('You must mention exactly one user as your opponent.');
                 } else {
                     let userId = msg.mentions.users.first().id;
-                    let canvas = TPStoCanvas({tps: args[1], theme});
+                    let canvas = TPStoCanvas({
+                        tps: args[1],
+                        player1: players[0],
+                        player2: players[1],
+                        theme
+                    });
                     let tpsHash = userId + '_' + msg.author.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
                     tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
                     let filename = msg.channel.id + '.png';
@@ -125,7 +130,13 @@ client.on('message', msg => {
 
                 let canvas;
                 try {
-                    canvas = TPStoCanvas({'tps': tps, 'ply': cmd, theme});
+                    canvas = TPStoCanvas({
+                        tps: tps,
+                        ply: cmd,
+                        player1: players[0],
+                        player2: players[1],
+                        theme
+                    });
                 } catch {
                     msg.channel.send('Invalid move.');
                     return;
