@@ -20,7 +20,13 @@ client.on('message', msg => {
                 msg.channel.send('Use `!tak @opponent (optional 5 or 6 to set size)` to start a new game.\
                     \nThe challenged player gets to move first.\
                     \n\nThe bot tracks games through the last move in the channel and can only see 50 message back.\
-                    \nIf you want to run multiple games at once, please use different channels.');
+                    \nIf you want to run multiple games at once, please use different channels.\
+                    \n\nExample commands:\
+                    \n```!tak help\
+                    \n!tak @opponent\
+                    \n!tak @opponent <size>\
+                    \n!tak undo\
+                    \n<while playing, any valid ply on it\'s own line>```');
                 break;
             case 'undo':
                 msg.channel.messages.fetch()
