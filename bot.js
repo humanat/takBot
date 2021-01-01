@@ -69,12 +69,19 @@ client.on('message', msg => {
                         msg.channel.send('Invalid board size.');
                         return;
                     }
-                    let canvas = TPStoCanvas({
-                        'tps': size,
-                        'player1': player1.username,
-                        'player2': player2.username,
-                        'theme': theme
-                    });
+                    let canvas;
+                    try {
+                        canvas = TPStoCanvas({
+                            'tps': size,
+                            'player1': player1.username,
+                            'player2': player2.username,
+                            'theme': theme
+                        });
+                    } catch (error) {
+                        console.log(error);
+                        msg.channel.send('An issue occurred while generating the starting board.');
+                        return;
+                    }
                     let tpsHash = player1.id + '_' + player2.id + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
                     tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
                     let filename = msg.channel.id + '.png';
@@ -134,24 +141,26 @@ client.on('message', msg => {
                     return;
                 }
 
-                let player1, player2;
-                msg.channel.guild.members.fetch(players[0])
-                .then(member => player1 = member)
-                .catch(console.error);
-                msg.channel.guild.members.fetch(players[1])
-                .then(member => player2 = member)
-                .catch(console.error);
+                let player1Name = '';
+                if (msg.channel.members.get(players[0])) {
+                    player1Name = msg.channel.members.get(players[0]).user.username;
+                }
+                let player2Name = '';
+                if (msg.channel.members.get(players[1])) {
+                    player2Name = msg.channel.members.get(players[1]).user.username;
+                }
 
                 let canvas;
                 try {
                     canvas = TPStoCanvas({
                         'tps': tps,
                         'ply': cmd,
-                        'player1': player1.displayName,
-                        'player2': player2.displayName,
+                        'player1': player1Name,
+                        'player2': player2Name,
                         'theme': theme
                     });
-                } catch {
+                } catch (error) {
+                    console.log(error);
                     msg.channel.send('Invalid move.');
                     return;
                 }
