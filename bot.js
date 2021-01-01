@@ -78,7 +78,6 @@ client.on('message', msg => {
                             'theme': theme
                         });
                     } catch (error) {
-                        console.log(error);
                         msg.channel.send('An issue occurred while generating the starting board.');
                         return;
                     }
@@ -155,7 +154,6 @@ client.on('message', msg => {
                                 'theme': theme
                             });
                         } catch (error) {
-                            console.log(error);
                             msg.channel.send('Invalid move.');
                             return;
                         }
