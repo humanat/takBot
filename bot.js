@@ -141,57 +141,56 @@ client.on('message', msg => {
                     return;
                 }
 
-                let player1Name = '';
-                if (msg.channel.members.get(players[0])) {
-                    player1Name = msg.channel.members.get(players[0]).user.username;
-                }
-                let player2Name = '';
-                if (msg.channel.members.get(players[1])) {
-                    player2Name = msg.channel.members.get(players[1]).user.username;
-                }
+                client.users.fetch(players[0])
+                .then(player1 => {
+                    client.users.fetch(players[1])
+                    .then(player2 => {
+                        let canvas;
+                        try {
+                            canvas = TPStoCanvas({
+                                'tps': tps,
+                                'ply': cmd,
+                                'player1': player1.username,
+                                'player2': player2.username,
+                                'theme': theme
+                            });
+                        } catch (error) {
+                            console.log(error);
+                            msg.channel.send('Invalid move.');
+                            return;
+                        }
 
-                let canvas;
-                try {
-                    canvas = TPStoCanvas({
-                        'tps': tps,
-                        'ply': cmd,
-                        'player1': player1Name,
-                        'player2': player2Name,
-                        'theme': theme
-                    });
-                } catch (error) {
-                    console.log(error);
-                    msg.channel.send('Invalid move.');
-                    return;
-                }
-
-                let nextPlayer = players[0];
-                if (turnMarker == '1') nextPlayer = players[1];
-                tpsHash = playersString + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
-                tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
-                let messageBack = 'Your turn, <@'+nextPlayer+'>\n||'+tpsHash+'||';
-                if (canvas.isGameEnd) {
-                    messageBack = 'Game Over! ' + canvas.id;
-                }
-                
-                let filename = msg.channel.id + '.png';
-                let out = fs.createWriteStream(filename);
-                let stream = canvas.pngStream();
-                stream.pipe(out);
-                out.on('finish', () => {
-                    msg.channel.send(messageBack, {
-                        files: [{
-                            attachment: filename,
-                            name: filename
-                        }]
-                    })
-                    .then(() => {
-                        fs.unlink(filename, (err) => {
-                            if (err) console.log(error);
+                        let nextPlayer = players[0];
+                        if (turnMarker == '1') nextPlayer = players[1];
+                        tpsHash = playersString + '___' + canvas.id.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
+                        tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
+                        let messageBack = 'Your turn, <@'+nextPlayer+'>\n||'+tpsHash+'||';
+                        if (canvas.isGameEnd) {
+                            messageBack = 'Game Over! ' + canvas.id;
+                        }
+                        
+                        let filename = msg.channel.id + '.png';
+                        let out = fs.createWriteStream(filename);
+                        let stream = canvas.pngStream();
+                        stream.pipe(out);
+                        out.on('finish', () => {
+                            msg.channel.send(messageBack, {
+                                files: [{
+                                    attachment: filename,
+                                    name: filename
+                                }]
+                            })
+                            .then(() => {
+                                fs.unlink(filename, (err) => {
+                                    if (err) console.log(error);
+                                });
+                            })
+                            .catch(console.error);
                         });
                     })
                     .catch(console.error);
                 })
+                .catch(console.error);
             })
             .catch(console.error);
          }
