@@ -40,8 +40,8 @@ async function fetchPlayerData(gameData) {
     let player1 = await client.users.fetch(gameData.player1);
     let player2 = await client.users.fetch(gameData.player2);
     return {
-        'player1': player1,
-        'player2': player2
+        'player1': player1.username,
+        'player2': player2.username
     };
 }
 
@@ -80,7 +80,7 @@ function handleHelp(msg) {
 }
 
 async function handleUndo(msg) {
-    let messages = await getGameMessages(msg)
+    let messages = await getGameMessages(msg);
     if (messages.array().length == 0) {
         msg.channel.send('You need to have a game in progress before undo will work...');
         return;
@@ -89,6 +89,7 @@ async function handleUndo(msg) {
     let message = messages.first();
     let encodedHash = getEncodedHashFromGameMessage(message);
     if (!encodedHash) {
+        msg.channel.send('You cannot undo a completed game.');
         return;
     }
 
@@ -107,9 +108,28 @@ async function handleUndo(msg) {
     message.delete();
 }
 
+async function handleLink(msg) {
+    let messages = await getGameMessages(msg);
+    if (messages.array().length == 0) {
+        msg.channel.send('You need to have a game in progress before link will work...');
+        return;
+    }
+
+    let message = messages.first();
+    let encodedHash = getEncodedHashFromGameMessage(message);
+    if (!encodedHash) {
+        msg.channel.send('You cannot get a TPS link to a completed game.');
+        return;
+    }
+
+    let gameData = getDataFromEncodedHash(encodedHash);
+    let playerData = await fetchPlayerData(gameData);
+    msg.channel.send(encodeURI('https://ptn.ninja/[TPS "' + gameData.tps + '"][Player1 "' + playerData.player1 + '"][Player2 "' + playerData.player2 + '"]'));
+}
+
 function handleNew(msg, args) {
     if (msg.mentions.users.array().length != 1) {
-        msg.channel.send('You must mention exactly one user as your opponent.');
+        msg.channel.send('I didn\'t undersatnd. See `!tak help` for example commands.');
     } else {
         let player1 = msg.mentions.users.first();
         let player2 = msg.author;
@@ -165,14 +185,14 @@ async function handleMove(msg, ply) {
         return;
     }
 
-    let playerData = await fetchPlayerData(gameData)
+    let playerData = await fetchPlayerData(gameData);
     let canvas;
     try {
         canvas = TPStoCanvas({
             'tps': gameData.tps,
             'ply': ply,
-            'player1': playerData.player1.username,
-            'player2': playerData.player2.username,
+            'player1': playerData.player1,
+            'player2': playerData.player2,
             'theme': theme
         });
     } catch (error) {
@@ -187,7 +207,7 @@ async function handleMove(msg, ply) {
     encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id});
     let messageComment = 'Your turn, <@'+nextPlayer+'>\n||' + encodedHash + '||';
     if (canvas.isGameEnd) {
-        messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id + '\n||' + encodedHash + '||';
+        messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
     }
 
     sendPngToDiscord(msg, canvas, messageComment);
@@ -208,6 +228,9 @@ client.on('message', msg => {
                 break;
             case 'undo':
                 handleUndo(msg);
+                break;
+            case 'link':
+                handleLink(msg);
                 break;
             default:
                 handleNew(msg, args);
