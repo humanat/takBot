@@ -18,7 +18,7 @@ client.on('message', msg => {
         let cmd = args[0];
         switch(cmd) {
             case 'help':
-                msg.channel.send('Use `!tak @opponent (optional 5 or 6 to set size)` to start a new game.\
+                msg.channel.send('Use `!tak @opponent (optional 3-8 to set size)` to start a new game.\
                     \nThe challenged player gets to move first.\
                     \n\nThe bot tracks games through the last move in the channel and can only see 50 message back.\
                     \nIf you want to run multiple games at once, please use different channels.\
