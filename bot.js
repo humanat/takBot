@@ -76,6 +76,7 @@ function handleHelp(msg) {
         \n!tak @opponent\
         \n!tak @opponent <size>\
         \n!tak undo\
+        \n!tak link\
         \n<while playing, any valid ply on it\'s own line>```');
 }
 

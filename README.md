@@ -14,5 +14,6 @@ Example commands:
 !tak @opponent
 !tak @opponent <size>
 !tak undo
+!tak link
 <while playing, any valid ply on it's own line>
 ```
