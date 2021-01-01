@@ -40,6 +40,11 @@ client.on('message', msg => {
                     
                     let message = myMessages.first();
                     let tpsHash = message.content.split('||')[1];
+                    if (!tpsHash) {
+                        // This can happen if the last message was a game over state.
+                        msg.channel.send('You cannot undo a finished or non-existant game.');
+                        return;
+                    }
                     tpsHash = lzutf8.decompress(decodeURI(tpsHash.replaceAll('_', '/')), {'inputEncoding': 'Base64'});
                     let playersString = tpsHash.split('___')[0];
                     let players = playersString.split('_');
