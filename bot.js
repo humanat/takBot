@@ -166,7 +166,7 @@ client.on('message', msg => {
                         tpsHash = encodeURI(lzutf8.compress(tpsHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
                         let messageBack = 'Your turn, <@'+nextPlayer+'>\n||'+tpsHash+'||';
                         if (canvas.isGameEnd) {
-                            messageBack = 'Game Over! ' + canvas.id;
+                            messageBack = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
                         }
                         
                         let filename = msg.channel.id + '.png';
