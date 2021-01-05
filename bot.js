@@ -77,13 +77,13 @@ function handleHelp(msg) {
         \n!tak @opponent <size>\
         \n!tak undo\
         \n!tak link\
-        \n<while playing, any valid ply on it\'s own line>```');
+        \n<while playing, any valid ply on its own line>```');
 }
 
 async function handleUndo(msg) {
     let messages = await getGameMessages(msg);
     if (messages.array().length == 0) {
-        msg.channel.send('You need to have a game in progress before undo will work...');
+        msg.channel.send('You need to have a game in progress before undo will work.');
         return;
     }
 
@@ -112,7 +112,7 @@ async function handleUndo(msg) {
 async function handleLink(msg) {
     let messages = await getGameMessages(msg);
     if (messages.array().length == 0) {
-        msg.channel.send('You need to have a game in progress before link will work...');
+        msg.channel.send('You need to have a game in progress before link will work.');
         return;
     }
 
@@ -130,7 +130,7 @@ async function handleLink(msg) {
 
 function handleNew(msg, args) {
     if (msg.mentions.users.array().length != 1) {
-        msg.channel.send('I didn\'t undersatnd. See `!tak help` for example commands.');
+        msg.channel.send('I didn\'t understand. See `!tak help` for example commands.');
     } else {
         let player1 = msg.mentions.users.first();
         let player2 = msg.author;
