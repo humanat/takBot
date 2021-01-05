@@ -37,12 +37,16 @@ function encodeHashFromData(gameData) {
 }
 
 async function fetchPlayerData(gameData) {
-    let player1 = await client.users.fetch(gameData.player1);
-    let player2 = await client.users.fetch(gameData.player2);
-    return {
-        'player1': player1.username,
-        'player2': player2.username
-    };
+    const result = {};
+    await Promise.all([
+        client.users.fetch(gameData.player1).then(
+            (player1) => { result.player1 = player1.username; }
+        ),
+        client.users.fetch(gameData.player2).then(
+            (player2) => { result.player2 = player2.username; }
+        )
+    ]);
+    return result;
 }
 
 function sendPngToDiscord(msg, canvas, messageComment) {
