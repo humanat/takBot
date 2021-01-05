@@ -145,6 +145,7 @@ function handleNew(msg, args) {
                 'tps': size,
                 'player1': player1.username,
                 'player2': player2.username,
+                'padding': false,
                 'theme': theme
             });
         } catch (error) {
@@ -194,6 +195,7 @@ async function handleMove(msg, ply) {
             'ply': ply,
             'player1': playerData.player1,
             'player2': playerData.player2,
+            'padding': false,
             'theme': theme
         });
     } catch (error) {
