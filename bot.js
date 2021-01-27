@@ -215,7 +215,7 @@ async function handleMove(msg, ply) {
     if (gameData.turnMarker == '1') nextPlayer = gameData.player2;
 
     encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id});
-    let messageComment = 'Your turn '+canvas.board.linenum+', <@'+nextPlayer+'>\n||' + encodedHash + '||';
+    let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>\n||' + encodedHash + '||';
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
     }
