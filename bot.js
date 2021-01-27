@@ -75,6 +75,7 @@ function handleHelp(msg) {
         \nThe challenged player gets to move first.\
         \n\nThe bot tracks games through the last move in the channel and can only see 50 message back.\
         \nIf you want to run multiple games at once, please use different channels.\
+        \n\nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
         \n\nExample commands:\
         \n```!tak help\
         \n!tak @opponent\
@@ -203,7 +204,9 @@ async function handleMove(msg, ply) {
             'theme': theme
         });
     } catch (error) {
-        console.log(error);
+        if (!error.message.includes('Invalid ply')) {
+            console.log(error);
+        }
         msg.channel.send('Invalid move.');
         return;
     }
@@ -212,7 +215,7 @@ async function handleMove(msg, ply) {
     if (gameData.turnMarker == '1') nextPlayer = gameData.player2;
 
     encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id});
-    let messageComment = 'Your turn, <@'+nextPlayer+'>\n||' + encodedHash + '||';
+    let messageComment = 'Your turn '+canvas.board.linenum+', <@'+nextPlayer+'>\n||' + encodedHash + '||';
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
     }
