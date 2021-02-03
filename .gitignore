@@ -1,2 +1,5 @@
 node_modules/
+images/
+saves/
 auth.json
+.DS_Store
