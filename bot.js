@@ -25,7 +25,7 @@ function getEncodedHashFromGameMessage(msg) {
 }
 
 function getEncodedHashFromFile(msg) {
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.tps';
+    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
     try {
         return fs.readFileSync(filename, 'utf8');
     } catch (err) {
@@ -41,7 +41,7 @@ function saveEncodedHashToFile(msg, encodedHash) {
     } catch (err) {
         console.log(err);
     }
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.tps';
+    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
     try {
         fs.writeFileSync(filename, encodedHash);
     } catch (err) {
@@ -50,7 +50,7 @@ function saveEncodedHashToFile(msg, encodedHash) {
 }
 
 function deleteEncodedHashFile(msg) {
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.tps';
+    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
     fs.unlink(filename, (err) => {
         if (err) console.log(err);
     });
@@ -72,16 +72,20 @@ function getDataFromEncodedHash(encodedHash) {
     let tps = gameHash.split('___')[1];
     let turnMarker = tps.split('__')[1];
     tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
+    let komi = (gameHash.split('___')[2] == null) ? 0 : gameHash.split('___')[2];
     return {
         'player1': players[0],
         'player2': players[1],
         'tps': tps,
-        'turnMarker': turnMarker
+        'turnMarker': turnMarker,
+        'komi': komi
     };
 }
 
 function encodeHashFromData(gameData) {
-    let gameHash = gameData.player1 + '_' + gameData.player2 + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__');
+    let gameHash = gameData.player1 + '_' + gameData.player2
+            + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
+            + '___' + gameData.komi;
     return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
 }
 
@@ -150,10 +154,12 @@ function handleNew(msg, args) {
             msg.channel.send('Invalid board size.');
             return;
         }
+        let komi = (args[2]) ? args[2] : '0';
         let canvas;
         try {
             canvas = TPStoCanvas({
                 'tps': size,
+                'komi': komi,
                 'player1': player1.username,
                 'player2': player2.username,
                 'padding': false,
@@ -166,7 +172,7 @@ function handleNew(msg, args) {
 
         cleanupFiles(msg);
 
-        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id});
+        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'komi': komi, 'tps': canvas.id});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
         sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
             saveEncodedHashToFile(sentMessage, encodedHash);
@@ -203,6 +209,7 @@ async function handleMove(msg, ply) {
         canvas = TPStoCanvas({
             'tps': gameData.tps,
             'ply': ply,
+            'komi': gameData.komi,
             'player1': playerData.player1,
             'player2': playerData.player2,
             'padding': false,
@@ -228,7 +235,7 @@ async function handleMove(msg, ply) {
         if (canvas.isGameEnd) {
             cleanupFiles(msg);
         } else {
-            encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id});
+            encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'komi': gameData.komi, 'tps': canvas.id});
             saveEncodedHashToFile(sentMessage, encodedHash);
         }
     });
@@ -286,8 +293,10 @@ async function handleLink(msg) {
 }
 
 function handleHelp(msg) {
-    msg.channel.send('Use `!tak @opponent (optional 3-8 to set size)` to start a new game.\
-        \nThe challenged player gets to move first.\
+    msg.channel.send('Use `!tak @opponent [size] [komi]` to start a new game.\
+        \nSize (optional, default 6): Valid values are 3 through 8.\
+        \nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from 0 up to the size of the board.\
+        \n\nThe challenged player gets to move first.\
         \n\nThe bot tracks games through the last move in the channel and can only see 50 message back.\
         \nIf you want to run multiple games at once, please use different channels.\
         \n\nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
@@ -295,8 +304,11 @@ function handleHelp(msg) {
         \n```!tak help\
         \n!tak @opponent\
         \n!tak @opponent <size>\
+        \n!tak @opponent <size> <komi>\
         \n!tak undo\
         \n!tak link\
+        \n!tak link <gameId> (unimplemented)\
+        \n!tak history (unimplemented)\
         \n<while playing, any valid ply on its own line>```');
 }
 
