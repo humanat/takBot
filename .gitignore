@@ -1,5 +1,6 @@
 node_modules/
 images/
-saves/
+data/
+ptn/
 auth.json
 .DS_Store

@@ -1,9 +1,11 @@
 const Discord = require('discord.js');
 const fs = require('fs');
 const lzutf8 = require('lzutf8');
+const crypto = require('crypto');
 const auth = require('./auth.json');
 const {TPStoCanvas} = require('./TPS-Ninja/src');
 const {once} = require('events');
+const {compressToEncodedURIComponent} = require('lz-string');
 
 const client = new Discord.Client();
 const theme = "discord";
@@ -16,32 +18,23 @@ function validPly(cmd) {
     return (cmd.match(/(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?(\*)?)?/i)) ? true : false;
 }
 
-function getEncodedHashFromGameMessage(msg) {
-    let arr = msg.content.split('||');
-    if (arr.length == 3) {
-        return arr[1];
-    }
-    return null;
-}
-
 function getEncodedHashFromFile(msg) {
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
+    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
     try {
         return fs.readFileSync(filename, 'utf8');
     } catch (err) {
         // On error we assume that the file doesn't exist
-        return null;
     }
-}
+} 
 
 function saveEncodedHashToFile(msg, encodedHash) {
-    let dirname = 'saves/' + msg.channel.id;
+    let dirname = 'data/' + msg.channel.id;
     try {
         fs.mkdirSync(dirname, {recursive:true});
     } catch (err) {
         console.log(err);
     }
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
+    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
     try {
         fs.writeFileSync(filename, encodedHash);
     } catch (err) {
@@ -50,14 +43,14 @@ function saveEncodedHashToFile(msg, encodedHash) {
 }
 
 function deleteEncodedHashFile(msg) {
-    let filename = 'saves/' + msg.channel.id + '/' + msg.id + '.data';
+    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
     fs.unlink(filename, (err) => {
         if (err) console.log(err);
     });
 }
 
 function cleanupFiles(msg) {
-    let dirname = 'saves/' + msg.channel.id;
+    let dirname = 'data/' + msg.channel.id;
     try {
         fs.rmdirSync(dirname, {recursive:true, force:true});
     } catch (err) {
@@ -72,21 +65,73 @@ function getDataFromEncodedHash(encodedHash) {
     let tps = gameHash.split('___')[1];
     let turnMarker = tps.split('__')[1];
     tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
-    let komi = (gameHash.split('___')[2] == null) ? 0 : gameHash.split('___')[2];
+    let komi = (gameHash.split('___')[2]) ? gameHash.split('___')[2] : 0;
+    let gameId = (gameHash.split('___')[3]) ? gameHash.split('___')[3] : 0;
     return {
         'player1': players[0],
         'player2': players[1],
         'tps': tps,
         'turnMarker': turnMarker,
-        'komi': komi
+        'komi': komi,
+        'gameId': gameId
     };
 }
 
 function encodeHashFromData(gameData) {
     let gameHash = gameData.player1 + '_' + gameData.player2
             + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
-            + '___' + gameData.komi;
+            + '___' + gameData.komi
+            + '___' + gameData.gameId;
     return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
+}
+
+function createPtnFile(gameData) {
+    try {
+        fs.mkdirSync('ptn');
+    } catch (err) {
+        console.log(err);
+    }
+
+    let gameId = Date.now() + crypto.randomBytes(2).toString("hex");
+    let filename = 'ptn/' + gameId + '.ptn';
+    let data = '[Player1 "' + gameData.player1 + '"] [Player2 "' + gameData.player2 + '"] [Size "' + gameData.size + '"] [Komi "' + gameData.komi + '"] 1.';
+    try {
+        fs.writeFileSync(filename, data);
+    } catch (err) {
+        console.log(err);
+    }
+    return gameId;
+}
+
+function addPlyToPtnFile(gameId, ply) {
+    let filename = 'ptn/' + gameId + '.ptn';
+    try {
+        let data = fs.readFileSync(filename, 'utf8');
+        data = data + ' ' + ply;
+        fs.writeFileSync(filename, data);
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+function removeLastPlyFromPtnFile(gameId) {
+    let filename = 'ptn/' + gameId + '.ptn';
+    try {
+        let data = fs.readFileSync(filename, 'utf8');
+        data = data.substr(0, data.lastIndexOf(' '));
+        fs.writeFileSync(filename, data);
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+function getPtnFromFile(gameId) {
+    let filename = 'ptn/' + gameId + '.ptn';
+    try {
+        return fs.readFileSync(filename, 'utf8');
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 
@@ -116,9 +161,8 @@ async function fetchPlayerData(gameData) {
 // Functions to send to Discord
 
 async function sendPngToDiscord(msg, canvas, messageComment) {
-    let dirname = 'images';
     try {
-        fs.mkdirSync(dirname, {recursive:true});
+        fs.mkdirSync('images', {recursive:true});
     } catch (err) {
         console.log(err);
     }
@@ -172,7 +216,8 @@ function handleNew(msg, args) {
 
         cleanupFiles(msg);
 
-        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'komi': komi, 'tps': canvas.id});
+        let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi});
+        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
         sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
             saveEncodedHashToFile(sentMessage, encodedHash);
@@ -188,7 +233,6 @@ async function handleMove(msg, ply) {
 
     let message = messages.first();
     let encodedHash = getEncodedHashFromFile(message);
-    if (!encodedHash) encodedHash = getEncodedHashFromGameMessage(message);
     if (!encodedHash) return;
 
     let gameData = getDataFromEncodedHash(encodedHash);
@@ -232,10 +276,11 @@ async function handleMove(msg, ply) {
     }
 
     sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
+        addPlyToPtnFile(gameData.gameId, ply);
         if (canvas.isGameEnd) {
             cleanupFiles(msg);
         } else {
-            encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'komi': gameData.komi, 'tps': canvas.id});
+            encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId});
             saveEncodedHashToFile(sentMessage, encodedHash);
         }
     });
@@ -250,7 +295,6 @@ async function handleUndo(msg) {
 
     let message = messages.first();
     let encodedHash = getEncodedHashFromFile(message);
-    if (!encodedHash) encodedHash = getEncodedHashFromGameMessage(message);
     if (!encodedHash) {
         msg.channel.send('You cannot undo a completed game.');
         return;
@@ -269,6 +313,7 @@ async function handleUndo(msg) {
     }
 
     message.delete();
+    removeLastPlyFromPtnFile(gameData.gameId);
     deleteEncodedHashFile(message);
 }
 
@@ -281,7 +326,6 @@ async function handleLink(msg) {
 
     let message = messages.first();
     let encodedHash = getEncodedHashFromFile(message);
-    if (!encodedHash) encodedHash = getEncodedHashFromGameMessage(message);
     if (!encodedHash) {
         msg.channel.send('You cannot get a TPS link to a completed game.');
         return;
@@ -289,7 +333,16 @@ async function handleLink(msg) {
 
     let gameData = getDataFromEncodedHash(encodedHash);
     let playerData = await fetchPlayerData(gameData);
-    msg.channel.send(encodeURI('https://ptn.ninja/[TPS "' + gameData.tps + '"][Player1 "' + playerData.player1 + '"][Player2 "' + playerData.player2 + '"]'));
+    if (gameData.gameId) {
+        msg.channel.send('https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameData.gameId)));
+    } else {
+        msg.channel.send('https://ptn.ninja/'
+            + compressToEncodedURIComponent('[TPS "'
+                + gameData.tps + '"][Player1 "'
+                + playerData.player1 + '"][Player2 "'
+                + playerData.player2 + '"][Komi "'
+                + gameData.komi + '"]'));
+    }
 }
 
 function handleHelp(msg) {
