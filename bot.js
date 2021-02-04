@@ -360,7 +360,7 @@ async function handleLink(msg, args) {
         let message = messages.first();
         let encodedHash = getEncodedHashFromFile(message);
         if (!encodedHash) {
-            msg.channel.send('You cannot get a TPS link to a completed game.');
+            msg.channel.send('You must use the gameId to get a link for a completed game. See `!tak history` to get the gameId.');
             return;
         }
 
