@@ -87,7 +87,7 @@ function encodeHashFromData(gameData) {
 
 function createPtnFile(gameData) {
     try {
-        fs.mkdirSync('ptn');
+        fs.mkdirSync('ptn', {recursive:true});
     } catch (err) {
         console.log(err);
     }
@@ -104,6 +104,13 @@ function createPtnFile(gameData) {
 }
 
 function addPlyToPtnFile(gameId, ply) {
+    ply = ply.toLowerCase();
+    if (ply.match(/[c][a-h][1-8]/)) {
+        ply = ply.replace('c', 'C');
+    } else if (ply.match(/[s][a-h][1-8]/)) {
+        ply = ply.replace('s', 'S');
+    }
+
     let filename = 'ptn/' + gameId + '.ptn';
     try {
         let data = fs.readFileSync(filename, 'utf8');
@@ -127,6 +134,25 @@ function removeLastPlyFromPtnFile(gameId) {
 
 function getPtnFromFile(gameId) {
     let filename = 'ptn/' + gameId + '.ptn';
+    try {
+        return fs.readFileSync(filename, 'utf8');
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+function addToHistoryFile(gameData) {
+    let filename = 'results.db';
+    let resultString = gameData.gameId + ', ' + gameData.player1 + ', ' + gameData.player2 + ', ' + gameData.komi + ', ' + gameData.result + '\n';
+    try {
+        fs.appendFileSync(filename, resultString);
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+function getHistoryFromFile() {
+    let filename = 'results.db';
     try {
         return fs.readFileSync(filename, 'utf8');
     } catch (err) {
@@ -273,10 +299,11 @@ async function handleMove(msg, ply) {
     let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>';
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
+        if (gameData.gameId) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
     }
 
     sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
-        addPlyToPtnFile(gameData.gameId, ply);
+        if (gameData.gameId) addPlyToPtnFile(gameData.gameId, ply);
         if (canvas.isGameEnd) {
             cleanupFiles(msg);
         } else {
@@ -317,25 +344,34 @@ async function handleUndo(msg) {
     deleteEncodedHashFile(message);
 }
 
-async function handleLink(msg) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length == 0) {
-        msg.channel.send('You need to have a game in progress before link will work.');
-        return;
-    }
+async function handleLink(msg, args) {
+    let gameId;
+    let gameData;
 
-    let message = messages.first();
-    let encodedHash = getEncodedHashFromFile(message);
-    if (!encodedHash) {
-        msg.channel.send('You cannot get a TPS link to a completed game.');
-        return;
-    }
-
-    let gameData = getDataFromEncodedHash(encodedHash);
-    let playerData = await fetchPlayerData(gameData);
-    if (gameData.gameId) {
-        msg.channel.send('https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameData.gameId)));
+    if (args[1]) {
+        gameId = args[1];
     } else {
+        let messages = await getGameMessages(msg);
+        if (messages.array().length == 0) {
+            msg.channel.send('You need to have a game in progress before link will work.');
+            return;
+        }
+
+        let message = messages.first();
+        let encodedHash = getEncodedHashFromFile(message);
+        if (!encodedHash) {
+            msg.channel.send('You cannot get a TPS link to a completed game.');
+            return;
+        }
+
+        gameData = getDataFromEncodedHash(encodedHash);
+        gameId = gameData.gameId;
+    }
+
+    if (gameId) {
+        msg.channel.send('https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameId)));
+    } else {
+        let playerData = await fetchPlayerData(gameData);
         msg.channel.send('https://ptn.ninja/'
             + compressToEncodedURIComponent('[TPS "'
                 + gameData.tps + '"][Player1 "'
@@ -343,6 +379,11 @@ async function handleLink(msg) {
                 + playerData.player2 + '"][Komi "'
                 + gameData.komi + '"]'));
     }
+}
+
+function handleHistory(msg) {
+    let historyData = getHistoryFromFile();
+    msg.channel.send(historyData);
 }
 
 function handleHelp(msg) {
@@ -360,8 +401,8 @@ function handleHelp(msg) {
         \n!tak @opponent <size> <komi>\
         \n!tak undo\
         \n!tak link\
-        \n!tak link <gameId> (unimplemented)\
-        \n!tak history (unimplemented)\
+        \n!tak link <gameId>\
+        \n!tak history\
         \n<while playing, any valid ply on its own line>```');
 }
 
@@ -386,7 +427,10 @@ client.on('message', msg => {
                 handleUndo(msg);
                 break;
             case 'link':
-                handleLink(msg);
+                handleLink(msg, args);
+                break;
+            case 'history':
+                handleHistory(msg);
                 break;
             default:
                 handleNew(msg, args);

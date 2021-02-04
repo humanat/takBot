@@ -3,4 +3,5 @@ images/
 data/
 ptn/
 auth.json
+results.db
 .DS_Store
