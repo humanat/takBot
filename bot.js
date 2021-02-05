@@ -19,8 +19,12 @@ function validPly(cmd) {
 }
 
 function getEncodedHashFromFile(msg) {
-    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
+    let dirname = 'data/' + msg.channel.id;
     try {
+        let files = fs.readdirSync(dirname);
+        files.sort();
+        let filename = files[files.length-1];
+        filename = 'data/' + msg.channel.id + '/' + filename;
         return fs.readFileSync(filename, 'utf8');
     } catch (err) {
         // On error we assume that the file doesn't exist
@@ -34,7 +38,13 @@ function saveEncodedHashToFile(msg, encodedHash) {
     } catch (err) {
         console.log(err);
     }
-    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
+    let filename = Date.now() + crypto.randomBytes(2).toString("hex");
+    if (20 - filename.length > 0) {
+        for (let i = 0; i < 20-filename.length; i++) {
+            filename = '0' + filename;
+        }
+    }
+    filename = 'data/' + msg.channel.id + '/' + filename + '.data';
     try {
         fs.writeFileSync(filename, encodedHash);
     } catch (err) {
@@ -43,10 +53,16 @@ function saveEncodedHashToFile(msg, encodedHash) {
 }
 
 function deleteEncodedHashFile(msg) {
-    let filename = 'data/' + msg.channel.id + '/' + msg.id + '.data';
-    fs.unlink(filename, (err) => {
-        if (err) console.log(err);
-    });
+    let dirname = 'data/' + msg.channel.id;
+    try {
+        let files = fs.readdirSync(dirname);
+        files.sort();
+        let filename = files[files.length-1];
+        filename = 'data/' + msg.channel.id + '/' + filename;
+        fs.unlinkSync(filename);
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 function cleanupFiles(msg) {
@@ -197,7 +213,7 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     let stream = canvas.pngStream();
     stream.pipe(out);
     await once(out, 'finish');
-    let message = await msg.channel.send(messageComment, {
+    await msg.channel.send(messageComment, {
         files: [{
             attachment: filename,
             name: filename
@@ -206,7 +222,6 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     fs.unlink(filename, (err) => {
         if (err) console.log(err);
     });
-    return message;
 }
 
 
@@ -245,20 +260,13 @@ function handleNew(msg, args) {
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi});
         let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
-        sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
-            saveEncodedHashToFile(sentMessage, encodedHash);
-        });
+        saveEncodedHashToFile(msg, encodedHash);
+        sendPngToDiscord(msg, canvas, messageComment);
     }
 }
 
 async function handleMove(msg, ply) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length == 0) {
-        return;
-    }
-
-    let message = messages.first();
-    let encodedHash = getEncodedHashFromFile(message);
+    let encodedHash = getEncodedHashFromFile(msg);
     if (!encodedHash) return;
 
     let gameData = getDataFromEncodedHash(encodedHash);
@@ -292,6 +300,7 @@ async function handleMove(msg, ply) {
         msg.channel.send('Invalid move.');
         return;
     }
+    if (gameData.gameId) addPlyToPtnFile(gameData.gameId, ply);
 
     let nextPlayer = gameData.player1;
     if (gameData.turnMarker == '1') nextPlayer = gameData.player2;
@@ -299,29 +308,18 @@ async function handleMove(msg, ply) {
     let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>';
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
+        cleanupFiles(msg);
         if (gameData.gameId) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
+    } else {
+        encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId});
+        saveEncodedHashToFile(msg, encodedHash);
     }
 
-    sendPngToDiscord(msg, canvas, messageComment).then(sentMessage => {
-        if (gameData.gameId) addPlyToPtnFile(gameData.gameId, ply);
-        if (canvas.isGameEnd) {
-            cleanupFiles(msg);
-        } else {
-            encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId});
-            saveEncodedHashToFile(sentMessage, encodedHash);
-        }
-    });
+    sendPngToDiscord(msg, canvas, messageComment);
 }
 
 async function handleUndo(msg) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length == 0) {
-        msg.channel.send('You need to have a game in progress before undo will work.');
-        return;
-    }
-
-    let message = messages.first();
-    let encodedHash = getEncodedHashFromFile(message);
+    let encodedHash = getEncodedHashFromFile(msg);
     if (!encodedHash) {
         msg.channel.send('You cannot undo a completed game.');
         return;
@@ -339,9 +337,14 @@ async function handleUndo(msg) {
         retturn;
     }
 
-    message.delete();
+    let messages = await getGameMessages(msg);
+    if (messages.array().length >= 0) {
+        let message = messages.first();
+        message.delete();
+    }
+
     removeLastPlyFromPtnFile(gameData.gameId);
-    deleteEncodedHashFile(message);
+    deleteEncodedHashFile(msg);
 }
 
 async function handleLink(msg, args) {
@@ -351,14 +354,7 @@ async function handleLink(msg, args) {
     if (args[1]) {
         gameId = args[1];
     } else {
-        let messages = await getGameMessages(msg);
-        if (messages.array().length == 0) {
-            msg.channel.send('You need to have a game in progress before link will work.');
-            return;
-        }
-
-        let message = messages.first();
-        let encodedHash = getEncodedHashFromFile(message);
+        let encodedHash = getEncodedHashFromFile(msg);
         if (!encodedHash) {
             msg.channel.send('You must use the gameId to get a link for a completed game. See `!tak history` to get the gameId.');
             return;
@@ -391,7 +387,7 @@ function handleHelp(msg) {
         \nSize (optional, default 6): Valid values are 3 through 8.\
         \nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from 0 up to the size of the board.\
         \n\nThe challenged player gets to move first.\
-        \n\nThe bot tracks games through the last move in the channel and can only see 50 message back.\
+        \n\nThe bot tracks games through the channel id.\
         \nIf you want to run multiple games at once, please use different channels.\
         \n\nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
         \n\nExample commands:\
