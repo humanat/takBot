@@ -94,7 +94,7 @@ function createPtnFile(gameData) {
 
     let gameId = Date.now() + crypto.randomBytes(2).toString("hex");
     let filename = 'ptn/' + gameId + '.ptn';
-    let data = '[Player1 "' + gameData.player1 + '"] [Player2 "' + gameData.player2 + '"] [Size "' + gameData.size + '"] [Komi "' + gameData.komi + '"] 1.';
+    let data = '[Player1 "' + gameData.player1 + '"][Player2 "' + gameData.player2 + '"][Size "' + gameData.size + '"][Komi "' + gameData.komi + '"] ';
     try {
         fs.writeFileSync(filename, data);
     } catch (err) {
