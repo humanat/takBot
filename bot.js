@@ -300,7 +300,7 @@ async function handleMove(msg, ply) {
         msg.channel.send('Invalid move.');
         return;
     }
-    if (gameData.gameId) addPlyToPtnFile(gameData.gameId, ply);
+    if (gameData.gameId != 0) addPlyToPtnFile(gameData.gameId, ply);
 
     let nextPlayer = gameData.player1;
     if (gameData.turnMarker == '1') nextPlayer = gameData.player2;
@@ -309,7 +309,7 @@ async function handleMove(msg, ply) {
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
         cleanupFiles(msg);
-        if (gameData.gameId) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
+        if (gameData.gameId != 0) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
     } else {
         encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId});
         saveEncodedHashToFile(msg, encodedHash);
@@ -343,7 +343,7 @@ async function handleUndo(msg) {
         message.delete();
     }
 
-    removeLastPlyFromPtnFile(gameData.gameId);
+    if (gameData.gameId != 0) removeLastPlyFromPtnFile(gameData.gameId);
     deleteEncodedHashFile(msg);
 }
 
@@ -364,7 +364,7 @@ async function handleLink(msg, args) {
         gameId = gameData.gameId;
     }
 
-    if (gameId) {
+    if (gameId != 0) {
         msg.channel.send('https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameId)));
     } else {
         let playerData = await fetchPlayerData(gameData);
