@@ -334,7 +334,7 @@ async function handleUndo(msg) {
     if ((gameData.turnMarker == '1' && msg.author.id != gameData.player2)
             || (gameData.turnMarker == '2' && msg.author.id != gameData.player1)) {
         msg.channel.send('You cannot undo a move that is not your own.');
-        retturn;
+        return;
     }
 
     let messages = await getGameMessages(msg);
