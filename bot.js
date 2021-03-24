@@ -88,13 +88,15 @@ function getDataFromEncodedHash(encodedHash) {
     tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
     let komi = (gameHash.split('___')[2]) ? gameHash.split('___')[2] : 0;
     let gameId = (gameHash.split('___')[3]) ? gameHash.split('___')[3] : 0;
+    let swap = gameHash.split('___')[4] != 'false';
     return {
         'player1': players[0],
         'player2': players[1],
         'tps': tps,
         'turnMarker': turnMarker,
         'komi': komi,
-        'gameId': gameId
+        'gameId': gameId,
+        'swap': swap
     };
 }
 
@@ -102,7 +104,8 @@ function encodeHashFromData(gameData) {
     let gameHash = gameData.player1 + '_' + gameData.player2
             + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
             + '___' + gameData.komi
-            + '___' + gameData.gameId;
+            + '___' + gameData.gameId
+            + '___' + gameData.swap
     return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
 }
 
@@ -241,12 +244,13 @@ function handleNew(msg, args) {
     } else {
         let player1 = msg.mentions.users.first();
         let player2 = msg.author;
-        let size = (args[1]) ? args[1] : '6';
+        let size = args[1] ? args[1] : '6';
         if (size !== '3' && size !== '4' && size !== '5' && size !== '6' && size !== '7' && size !== '8') {
             msg.channel.send('Invalid board size.');
             return;
         }
-        let komi = (args[2]) ? args[2] : '0';
+        let komi = args[2] ? args[2] : '0';
+        let swapFirstPieces = args[3] ? false : true;
         let canvas;
         try {
             canvas = TPStoCanvas({
@@ -255,7 +259,8 @@ function handleNew(msg, args) {
                 'player1': player1.username,
                 'player2': player2.username,
                 'padding': false,
-                'theme': theme
+                'theme': theme,
+                'alternateOpeningPieces': swapFirstPieces
             });
         } catch (error) {
             msg.channel.send('An issue occurred while generating the starting board.');
@@ -263,7 +268,7 @@ function handleNew(msg, args) {
         }
 
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi});
-        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId});
+        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'swap': swapFirstPieces});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
         saveEncodedHashToFile(msg, encodedHash);
         sendPngToDiscord(msg, canvas, messageComment);
@@ -305,7 +310,8 @@ async function handleMove(msg, ply) {
             'player1': playerData.player1,
             'player2': playerData.player2,
             'padding': false,
-            'theme': theme
+            'theme': theme,
+            'alternateOpeningPieces': gameData.swap
         });
     } catch (err) {
         if (!err.message.includes('Invalid ply')) {
@@ -325,7 +331,7 @@ async function handleMove(msg, ply) {
         cleanupFiles(msg);
         if (gameData.gameId != 0) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
     } else {
-        encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId});
+        encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId, 'swap': gameData.swap});
         saveEncodedHashToFile(msg, encodedHash);
     }
 
@@ -408,7 +414,8 @@ function handleHelp(msg) {
         \n\nThe challenged player gets to move first.\
         \n\nThe bot tracks games through the channel id.\
         \nIf you want to run multiple games at once, please use different channels.\
-        \n\nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
+        \n\nHere are the rules for Tak: <https://ustak.org/play-beautiful-game-tak/>\
+        \nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
         \n\nExample commands:\
         \n```!tak help\
         \n!tak @opponent\
