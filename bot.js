@@ -65,6 +65,11 @@ function deleteEncodedHashFile(msg) {
     }
 }
 
+function checkForOngoingGame(msg) {
+    let dirname = 'data/' + msg.channel.id;
+    return fs.existsSync(dirname);
+}
+
 function cleanupFiles(msg) {
     let dirname = 'data/' + msg.channel.id;
     try {
@@ -231,6 +236,8 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
 function handleNew(msg, args) {
     if (msg.mentions.users.array().length != 1) {
         msg.channel.send('I didn\'t understand. See `!tak help` for example commands.');
+    } else if (checkForOngoingGame(msg)) {
+        msg.channel.send('You cannot overwrite an ongoing game. Use `!tak end` if you are sure that no one is using this channel.');
     } else {
         let player1 = msg.mentions.users.first();
         let player2 = msg.author;
@@ -255,13 +262,20 @@ function handleNew(msg, args) {
             return;
         }
 
-        cleanupFiles(msg);
-
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi});
         let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
         saveEncodedHashToFile(msg, encodedHash);
         sendPngToDiscord(msg, canvas, messageComment);
+    }
+}
+
+function handleEnd(msg) {
+    if (checkForOngoingGame(msg)) {
+        cleanupFiles(msg);
+        msg.channel.send('Ongoing game in this channel has been removed.');
+    } else {
+        msg.channel.send('There is no ongoing game in this channel.');
     }
 }
 
@@ -315,7 +329,12 @@ async function handleMove(msg, ply) {
         saveEncodedHashToFile(msg, encodedHash);
     }
 
-    sendPngToDiscord(msg, canvas, messageComment);
+    await sendPngToDiscord(msg, canvas, messageComment);
+
+    if (canvas.isGameEnd) {
+        await msg.channel.send('Here\'s a link to the completed game:');
+        handleLink(msg, ['link', gameData.gameId]);
+    }
 }
 
 async function handleUndo(msg) {
@@ -365,15 +384,15 @@ async function handleLink(msg, args) {
     }
 
     if (gameId != 0) {
-        msg.channel.send('https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameId)));
+        msg.channel.send('<https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameId)) + '>');
     } else {
         let playerData = await fetchPlayerData(gameData);
-        msg.channel.send('https://ptn.ninja/'
+        msg.channel.send('<https://ptn.ninja/'
             + compressToEncodedURIComponent('[TPS "'
                 + gameData.tps + '"][Player1 "'
                 + playerData.player1 + '"][Player2 "'
                 + playerData.player2 + '"][Komi "'
-                + gameData.komi + '"]'));
+                + gameData.komi + '"]>'));
     }
 }
 
@@ -396,6 +415,7 @@ function handleHelp(msg) {
         \n!tak @opponent <size>\
         \n!tak @opponent <size> <komi>\
         \n!tak undo\
+        \n!tak end\
         \n!tak link\
         \n!tak link <gameId>\
         \n!tak history\
@@ -427,6 +447,9 @@ client.on('message', msg => {
                 break;
             case 'history':
                 handleHistory(msg);
+                break;
+            case 'end':
+                handleEnd(msg);
                 break;
             default:
                 handleNew(msg, args);
