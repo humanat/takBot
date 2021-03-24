@@ -409,24 +409,24 @@ function handleHistory(msg) {
 
 function handleHelp(msg) {
     msg.channel.send('Use `!tak @opponent [size] [komi]` to start a new game.\
-        \nSize (optional, default 6): Valid values are 3 through 8.\
-        \nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from 0 up to the size of the board.\
-        \n\nThe challenged player gets to move first.\
-        \n\nThe bot tracks games through the channel id.\
-        \nIf you want to run multiple games at once, please use different channels.\
-        \n\nHere are the rules for Tak: <https://ustak.org/play-beautiful-game-tak/>\
-        \nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
-        \n\nExample commands:\
-        \n```!tak help\
-        \n!tak @opponent\
-        \n!tak @opponent <size>\
-        \n!tak @opponent <size> <komi>\
-        \n!tak undo\
-        \n!tak end\
-        \n!tak link\
-        \n!tak link <gameId>\
-        \n!tak history\
-        \n<while playing, any valid ply on its own line>```');
+\nSize (optional, default 6): Valid values are 3 through 8.\
+\nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from 0 up to the size of the board.\
+\n\nThe challenged player plays the white pieces.\
+\n\nThe bot tracks games through the channel id.\
+\nIf you want to run multiple games at once, please use different channels.\
+\n\nHere are the rules for Tak: <https://ustak.org/play-beautiful-game-tak/>\
+\nAlso, here\'s a PTN reference link: <https://ustak.org/portable-tak-notation/>\
+\n\nExample commands:\
+\n```!tak help\
+\n!tak @opponent\
+\n!tak @opponent <size>\
+\n!tak @opponent <size> <komi>\
+\n!tak undo\
+\n!tak end\
+\n!tak link\
+\n!tak link <gameId>\
+\n!tak history\
+\n<while playing, any valid ply on its own line>```');
 }
 
 
