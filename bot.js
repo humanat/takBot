@@ -118,7 +118,11 @@ function createPtnFile(gameData) {
 
     let gameId = Date.now() + crypto.randomBytes(2).toString("hex");
     let filename = 'ptn/' + gameId + '.ptn';
-    let data = '[Player1 "' + gameData.player1 + '"][Player2 "' + gameData.player2 + '"][Size "' + gameData.size + '"][Komi "' + gameData.komi + '"] ';
+    let data = '[Player1 "' + gameData.player1 +
+        '"][Player2 "' + gameData.player2 +
+        '"][Size "' + gameData.size +
+        '"][Komi "' + gameData.komi +
+        '"][Opening "' + gameData.swap ? 'swap' : 'no-swap' + '"] ';
     try {
         fs.writeFileSync(filename, data);
     } catch (err) {
@@ -260,7 +264,7 @@ function handleNew(msg, args) {
                 'player2': player2.username,
                 'padding': false,
                 'theme': theme,
-                'alternateOpeningPieces': swapFirstPieces
+                'openingSwap': swapFirstPieces
             });
         } catch (error) {
             msg.channel.send('An issue occurred while generating the starting board.');
@@ -311,7 +315,7 @@ async function handleMove(msg, ply) {
             'player2': playerData.player2,
             'padding': false,
             'theme': theme,
-            'alternateOpeningPieces': gameData.swap
+            'openingSwap': gameData.swap
         });
     } catch (err) {
         if (!err.message.includes('Invalid ply')) {
@@ -398,7 +402,8 @@ async function handleLink(msg, args) {
                 + gameData.tps + '"][Player1 "'
                 + playerData.player1 + '"][Player2 "'
                 + playerData.player2 + '"][Komi "'
-                + gameData.komi + '"]>'));
+                + gameData.komi + '"][Opening "'
+                + gameData.swap ? 'swap' : 'no-swap' + '"]>'));
     }
 }
 
