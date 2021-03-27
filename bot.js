@@ -415,7 +415,7 @@ function handleHistory(msg) {
 function handleHelp(msg) {
     msg.channel.send('Use `!tak @opponent [size] [komi]` to start a new game.\
 \nSize (optional, default 6): Valid values are 3 through 8.\
-\nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from 0 up to the size of the board.\
+\nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from -20.5 to 20.5.\
 \n\nThe challenged player plays the white pieces.\
 \n\nThe bot tracks games through the channel id.\
 \nIf you want to run multiple games at once, please use different channels.\
