@@ -3,6 +3,7 @@ const fs = require('fs');
 const lzutf8 = require('lzutf8');
 const crypto = require('crypto');
 const auth = require('./auth.json');
+const parser = require('minimist');
 const {TPStoCanvas} = require('./TPS-Ninja/src');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
@@ -86,9 +87,9 @@ function getDataFromEncodedHash(encodedHash) {
     let tps = gameHash.split('___')[1];
     let turnMarker = tps.split('__')[1];
     tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
-    let komi = (gameHash.split('___')[2]) ? gameHash.split('___')[2] : 0;
-    let gameId = (gameHash.split('___')[3]) ? gameHash.split('___')[3] : 0;
-    let swap = gameHash.split('___')[4] != 'false';
+    let komi = gameHash.split('___')[2] ? gameHash.split('___')[2] : 0;
+    let gameId = gameHash.split('___')[3] ? gameHash.split('___')[3] : 0;
+    let opening = gameHash.split('___')[4] ? gameHash.split('___')[4] : 'swap';
     return {
         'player1': players[0],
         'player2': players[1],
@@ -96,7 +97,7 @@ function getDataFromEncodedHash(encodedHash) {
         'turnMarker': turnMarker,
         'komi': komi,
         'gameId': gameId,
-        'swap': swap
+        'opening': opening
     };
 }
 
@@ -105,7 +106,7 @@ function encodeHashFromData(gameData) {
             + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
             + '___' + gameData.komi
             + '___' + gameData.gameId
-            + '___' + gameData.swap
+            + '___' + gameData.opening
     return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
 }
 
@@ -118,11 +119,11 @@ function createPtnFile(gameData) {
 
     let gameId = Date.now() + crypto.randomBytes(2).toString("hex");
     let filename = 'ptn/' + gameId + '.ptn';
-    let data = '[Player1 "' + gameData.player1 +
-        '"][Player2 "' + gameData.player2 +
-        '"][Size "' + gameData.size +
-        '"][Komi "' + gameData.komi +
-        '"][Opening "' + gameData.swap ? 'swap' : 'no-swap' + '"] ';
+    let data = '[Player1 "' + gameData.player1 + '"]'
+        + '[Player2 "' + gameData.player2 + '"]'
+        + '[Size "' + gameData.size + '"]'
+        + '[Komi "' + gameData.komi + '"]'
+        + '[Opening "' + gameData.opening + '"]';
     try {
         fs.writeFileSync(filename, data);
     } catch (err) {
@@ -171,7 +172,7 @@ function getPtnFromFile(gameId) {
 
 function addToHistoryFile(gameData) {
     let filename = 'results.db';
-    let resultString = gameData.gameId + ', ' + gameData.player1 + ', ' + gameData.player2 + ', ' + gameData.komi + ', ' + gameData.result + '\n';
+    let resultString = gameData.gameId + ', ' + gameData.player1 + ', ' + gameData.player2 + ', ' + gameData.komi + ', ' + gameData.opening + ', ' + gameData.result + '\n';
     try {
         fs.appendFileSync(filename, resultString);
     } catch (err) {
@@ -240,21 +241,40 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
 
 // Major handler methods
 
-function handleNew(msg, args) {
+function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
         msg.channel.send('I didn\'t understand. See `!tak help` for example commands.');
     } else if (checkForOngoingGame(msg)) {
         msg.channel.send('You cannot overwrite an ongoing game. Use `!tak end` if you are sure that no one is using this channel.');
     } else {
-        let player1 = msg.mentions.users.first();
-        let player2 = msg.author;
-        let size = args[1] ? args[1] : '6';
-        if (size !== '3' && size !== '4' && size !== '5' && size !== '6' && size !== '7' && size !== '8') {
+        let player1;
+        let player2;
+        if (options.white || (options.random && Math.random() < 0.5)) {
+            player1 = msg.author;
+            player2 = msg.mentions.users.first();
+        } else {
+            player1 = msg.mentions.users.first();
+            player2 = msg.author;
+        }
+
+        let size = options.size ? options.size : 6;
+        if (size < 3 || size > 8) {
             msg.channel.send('Invalid board size.');
             return;
         }
-        let komi = args[2] ? args[2] : '0';
-        let swapFirstPieces = args[3] ? false : true;
+
+        let komi = options.komi ? options.komi : 0;
+        if (komi < -20.5 || komi > 20.5) {
+            msg.channel.send('Invalid komi.');
+            return;
+        }
+
+        let opening = options.opening ? options.opening : 'swap';
+        if (opening != 'swap' && opening != 'no-swap') {
+            msg.channel.send('Invalid opening.');
+            return;
+        }
+
         let canvas;
         try {
             canvas = TPStoCanvas({
@@ -264,15 +284,15 @@ function handleNew(msg, args) {
                 'player2': player2.username,
                 'padding': false,
                 'theme': theme,
-                'openingSwap': swapFirstPieces
+                'opening': opening
             });
         } catch (error) {
             msg.channel.send('An issue occurred while generating the starting board.');
             return;
         }
 
-        let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi});
-        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'swap': swapFirstPieces});
+        let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi, 'opening': opening});
+        let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'opening': opening});
         let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
         saveEncodedHashToFile(msg, encodedHash);
         sendPngToDiscord(msg, canvas, messageComment);
@@ -315,7 +335,7 @@ async function handleMove(msg, ply) {
             'player2': playerData.player2,
             'padding': false,
             'theme': theme,
-            'openingSwap': gameData.swap
+            'opening': gameData.opening
         });
     } catch (err) {
         if (!err.message.includes('Invalid ply')) {
@@ -333,9 +353,9 @@ async function handleMove(msg, ply) {
     if (canvas.isGameEnd) {
         messageComment = 'GG <@'+nextPlayer+'>! Game Ended ' + canvas.id;
         cleanupFiles(msg);
-        if (gameData.gameId != 0) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'result': canvas.id});
+        if (gameData.gameId != 0) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'opening': gameData.opening, 'result': canvas.id});
     } else {
-        encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId, 'swap': gameData.swap});
+        encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId, 'opening': gameData.opening});
         saveEncodedHashToFile(msg, encodedHash);
     }
 
@@ -343,7 +363,7 @@ async function handleMove(msg, ply) {
 
     if (canvas.isGameEnd) {
         await msg.channel.send('Here\'s a link to the completed game:');
-        handleLink(msg, ['link', gameData.gameId]);
+        handleLink(msg, gameData.gameId);
     }
 }
 
@@ -376,34 +396,22 @@ async function handleUndo(msg) {
     deleteEncodedHashFile(msg);
 }
 
-async function handleLink(msg, args) {
-    let gameId;
-    let gameData;
-
-    if (args[1]) {
-        gameId = args[1];
-    } else {
+async function handleLink(msg, gameId) {
+    if (!gameId) {
         let encodedHash = getEncodedHashFromFile(msg);
         if (!encodedHash) {
             msg.channel.send('You must use the gameId to get a link for a completed game. See `!tak history` to get the gameId.');
             return;
         }
-
         gameData = getDataFromEncodedHash(encodedHash);
         gameId = gameData.gameId;
     }
 
-    if (gameId != 0) {
-        msg.channel.send('<https://ptn.ninja/' + compressToEncodedURIComponent(getPtnFromFile(gameId)) + '>');
+    let ptn = getPtnFromFile(gameId);
+    if (!ptn) {
+        msg.channel.send('No game with that id.');
     } else {
-        let playerData = await fetchPlayerData(gameData);
-        msg.channel.send('<https://ptn.ninja/'
-            + compressToEncodedURIComponent('[TPS "'
-                + gameData.tps + '"][Player1 "'
-                + playerData.player1 + '"][Player2 "'
-                + playerData.player2 + '"][Komi "'
-                + gameData.komi + '"][Opening "'
-                + gameData.swap ? 'swap' : 'no-swap' + '"]>'));
+        msg.channel.send('<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
     }
 }
 
@@ -413,10 +421,13 @@ function handleHistory(msg) {
 }
 
 function handleHelp(msg) {
-    msg.channel.send('Use `!tak @opponent [size] [komi]` to start a new game.\
+    msg.channel.send('Use `!tak @opponent` to start a new game. You can use --option to specify any of the following:\
 \nSize (optional, default 6): Valid values are 3 through 8.\
 \nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from -20.5 to 20.5.\
-\n\nThe challenged player plays the white pieces.\
+\nOpening (optional, default "swap"): Whether the first two flat moves play for your opponent. Valid values are "swap" and "no-swap"\
+\nWhite (optional, boolean): Seats the message author as the White player.\
+\nRandom (optional, boolean): Seats the message author randomly as White or Black.\
+\n\nBy default the challenged player plays the white pieces.\
 \n\nThe bot tracks games through the channel id.\
 \nIf you want to run multiple games at once, please use different channels.\
 \n\nHere are the rules for Tak: <https://ustak.org/play-beautiful-game-tak/>\
@@ -424,8 +435,7 @@ function handleHelp(msg) {
 \n\nExample commands:\
 \n```!tak help\
 \n!tak @opponent\
-\n!tak @opponent <size>\
-\n!tak @opponent <size> <komi>\
+\n!tak @opponent --size 5 --komi 1 --opening no-swap --random\
 \n!tak undo\
 \n!tak end\
 \n!tak link\
@@ -443,9 +453,10 @@ client.on('ready', () => {
 });
 
 client.on('message', msg => {
-    let message = msg.content;
-    if (message.length >= 4 && message.substring(0, 4) == '!tak') {
+    let message = msg.content.trim();
+    if (message.length >= 4 && message.substring(0, 4).toLowerCase() == '!tak') {
         let args = message.substring(5).split(' ');
+        args = args.filter(arg => arg && arg.length !== 0);
         let cmd = args[0];
         switch(cmd) {
             case 'help':
@@ -455,7 +466,7 @@ client.on('message', msg => {
                 handleUndo(msg);
                 break;
             case 'link':
-                handleLink(msg, args);
+                handleLink(msg, args[1]);
                 break;
             case 'history':
                 handleHistory(msg);
@@ -464,11 +475,14 @@ client.on('message', msg => {
                 handleEnd(msg);
                 break;
             default:
-                handleNew(msg, args);
+                args.shift();
+                let options = parser(args);
+                handleNew(msg, options);
                 break;
         }
     } else {
         let args = message.split(' ');
+        args = args.filter(arg => arg && arg.length !== 0);
         if (args.length != 1) return;
         if (!validPly(args[0])) return;
         handleMove(msg, args[0]);
