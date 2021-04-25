@@ -338,7 +338,7 @@ async function handleMove(msg, ply) {
             'opening': gameData.opening
         });
     } catch (err) {
-        if (!err.message.includes('Invalid') {
+        if (!err.message.includes('Invalid')) {
             console.log(err);
         }
         msg.channel.send('Invalid move.');
