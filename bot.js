@@ -444,6 +444,12 @@ function handleHelp(msg) {
 \n<while playing, any valid ply on its own line>```');
 }
 
+function handleRandom(msg, arg) {
+    let rand = 1+Math.floor(Math.random()*arg);
+    if (isNaN(rand)) return;
+    msg.channel.send(rand);
+}
+
 
 
 // Main code
@@ -480,6 +486,11 @@ client.on('message', msg => {
                 handleNew(msg, options);
                 break;
         }
+    } else if (message.length >= 4 && message.substring(0,4).toLowerCase() == '!rng') {
+        let args = message.substring(5).split(' ');
+        args = args.filter(arg => arg && arg.length != 0);
+        if (args.length != 1) return;
+        handleRandom(msg, args[0]);
     } else {
         let args = message.split(' ');
         args = args.filter(arg => arg && arg.length !== 0);
