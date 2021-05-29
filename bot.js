@@ -166,7 +166,9 @@ function getPtnFromFile(gameId) {
     try {
         return fs.readFileSync(filename, 'utf8');
     } catch (err) {
-        console.log(err);
+        if (!err.message.includes('no such file or directory')) {
+            console.log(err);
+        }
     }
 }
 
@@ -417,8 +419,9 @@ async function handleLink(msg, gameId) {
 }
 
 function handleHistory(msg) {
-    let historyData = getHistoryFromFile();
-    msg.channel.send(historyData);
+    msg.channel.send('The history command is temporarily disabled.');
+    // let historyData = getHistoryFromFile();
+    // msg.channel.send(historyData);
 }
 
 function handleHelp(msg) {
