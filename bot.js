@@ -390,6 +390,7 @@ async function handleUndo(msg) {
     if (messages.array().length >= 0) {
         let message = messages.first();
         message.delete();
+        msg.channel.send('Previous move undone.');
     }
 
     if (gameData.gameId != 0) removeLastPlyFromPtnFile(gameData.gameId);
