@@ -394,6 +394,7 @@ async function handleUndo(msg) {
 
     if (gameData.gameId != 0) removeLastPlyFromPtnFile(gameData.gameId);
     deleteEncodedHashFile(msg);
+    msg.channel.send('Undo complete.');
 }
 
 async function handleLink(msg, gameId) {
