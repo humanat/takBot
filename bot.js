@@ -182,10 +182,22 @@ function addToHistoryFile(gameData) {
     }
 }
 
-function getHistoryFromFile() {
-    let filename = 'results.db';
+function getHistoryFromFile(page) {
     try {
-        return fs.readFileSync(filename, 'utf8');
+        if (isNaN(page) || page < 1) { return; }
+        let filename = 'results.db';
+        let gamesPerPage = 10;
+        let history = fs.readFileSync(filename, 'utf8');
+        let historyArray = history.split('\n');
+        let header = historyArray[0];
+        historyArray.shift();
+        while (historyArray[historyArray.length-1] == "") { historyArray.pop(); }
+        let numPages = Math.ceil(historyArray.length/gamesPerPage);
+        if (page > numPages) { return; }
+        historyArray = historyArray.reverse();
+        historyArray = historyArray.slice((page-1)*gamesPerPage, page*gamesPerPage);
+        history = 'page ' + page + ' of ' + numPages + '\n\n' + header + '\n' + historyArray.join('\n');
+        return history;
     } catch (err) {
         console.log(err);
     }
@@ -434,10 +446,17 @@ async function handleLink(msg, gameId) {
     }
 }
 
-function handleHistory(msg) {
-    sendMessage(msg, 'The history command is temporarily disabled.');
-    // let historyData = getHistoryFromFile();
-    // sendMessage(msg, historyData);
+function handleHistory(msg, page="1") {
+    try {
+        let historyData = getHistoryFromFile(parseInt(page));
+        if (historyData) {
+            sendMessage(msg, historyData);
+        } else {
+            sendMessage(msg, 'Not a valid page number');
+        }
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 function handleHelp(msg) {
@@ -461,6 +480,7 @@ function handleHelp(msg) {
 \n!tak link\
 \n!tak link <gameId>\
 \n!tak history\
+\n!tak history <pageNumber>\
 \n<while playing, any valid ply on its own line>```');
 }
 
@@ -495,7 +515,7 @@ client.on('message', msg => {
                 handleLink(msg, args[1]);
                 break;
             case 'history':
-                handleHistory(msg);
+                handleHistory(msg, args[1]);
                 break;
             case 'end':
                 handleEnd(msg);

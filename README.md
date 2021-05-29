@@ -23,5 +23,6 @@ Example commands:
 !tak link
 !tak link <gameId>
 !tak history
+!tak history <pageNumber>
 <while playing, any valid ply on its own line>
 ```
