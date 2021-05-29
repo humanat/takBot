@@ -239,15 +239,23 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     });
 }
 
+async function sendMessage(msg, content) {
+    if (typeof content == "string" && content.length <= 2000) {
+        await msg.channel.send(content);
+    } else {
+        await msg.channel.send('takBot attempted to send a message that was over 2000 characters in length and failed.');
+    }
+}
+
 
 
 // Major handler methods
 
 function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
-        msg.channel.send('I didn\'t understand. See `!tak help` for example commands.');
+        sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
     } else if (checkForOngoingGame(msg)) {
-        msg.channel.send('You cannot overwrite an ongoing game. Use `!tak end` if you are sure that no one is using this channel.');
+        sendMessage(msg, 'You cannot overwrite an ongoing game. Use `!tak end` if you are sure that no one is using this channel.');
     } else {
         let player1;
         let player2;
@@ -261,19 +269,19 @@ function handleNew(msg, options) {
 
         let size = options.size ? options.size : 6;
         if (size < 3 || size > 8) {
-            msg.channel.send('Invalid board size.');
+            sendMessage(msg, 'Invalid board size.');
             return;
         }
 
         let komi = options.komi ? options.komi : 0;
         if (komi < -20.5 || komi > 20.5) {
-            msg.channel.send('Invalid komi.');
+            sendMessage(msg, 'Invalid komi.');
             return;
         }
 
         let opening = options.opening ? options.opening : 'swap';
         if (opening != 'swap' && opening != 'no-swap') {
-            msg.channel.send('Invalid opening.');
+            sendMessage(msg, 'Invalid opening.');
             return;
         }
 
@@ -289,7 +297,7 @@ function handleNew(msg, options) {
                 'opening': opening
             });
         } catch (error) {
-            msg.channel.send('An issue occurred while generating the starting board.');
+            sendMessage(msg, 'An issue occurred while generating the starting board.');
             return;
         }
 
@@ -304,9 +312,9 @@ function handleNew(msg, options) {
 function handleEnd(msg) {
     if (checkForOngoingGame(msg)) {
         cleanupFiles(msg);
-        msg.channel.send('Ongoing game in this channel has been removed.');
+        sendMessage(msg, 'Ongoing game in this channel has been removed.');
     } else {
-        msg.channel.send('There is no ongoing game in this channel.');
+        sendMessage(msg, 'There is no ongoing game in this channel.');
     }
 }
 
@@ -322,7 +330,7 @@ async function handleMove(msg, ply) {
 
     if ((gameData.turnMarker == '1' && msg.author.id != gameData.player1)
             || (gameData.turnMarker == '2' && msg.author.id != gameData.player2)) {
-        msg.channel.send('You are not the active player.');
+        sendMessage(msg, 'You are not the active player.');
         return;
     }
 
@@ -343,7 +351,7 @@ async function handleMove(msg, ply) {
         if (!err.message.includes('Invalid')) {
             console.log(err);
         }
-        msg.channel.send('Invalid move.');
+        sendMessage(msg, 'Invalid move.');
         return;
     }
     if (gameData.gameId != 0) addPlyToPtnFile(gameData.gameId, ply);
@@ -364,7 +372,7 @@ async function handleMove(msg, ply) {
     await sendPngToDiscord(msg, canvas, messageComment);
 
     if (canvas.isGameEnd) {
-        await msg.channel.send('Here\'s a link to the completed game:');
+        await sendMessage(msg, 'Here\'s a link to the completed game:');
         handleLink(msg, gameData.gameId);
     }
 }
@@ -372,7 +380,7 @@ async function handleMove(msg, ply) {
 async function handleUndo(msg) {
     let encodedHash = getEncodedHashFromFile(msg);
     if (!encodedHash) {
-        msg.channel.send('You cannot undo a completed game.');
+        sendMessage(msg, 'You cannot undo a completed game.');
         return;
     }
 
@@ -384,7 +392,7 @@ async function handleUndo(msg) {
 
     if ((gameData.turnMarker == '1' && msg.author.id != gameData.player2)
             || (gameData.turnMarker == '2' && msg.author.id != gameData.player1)) {
-        msg.channel.send('You cannot undo a move that is not your own.');
+        sendMessage(msg, 'You cannot undo a move that is not your own.');
         return;
     }
 
@@ -396,14 +404,14 @@ async function handleUndo(msg) {
 
     if (gameData.gameId != 0) removeLastPlyFromPtnFile(gameData.gameId);
     deleteEncodedHashFile(msg);
-    msg.channel.send('Undo complete.');
+    sendMessage(msg, 'Undo complete.');
 }
 
 async function handleLink(msg, gameId) {
     if (!gameId) {
         let encodedHash = getEncodedHashFromFile(msg);
         if (!encodedHash) {
-            msg.channel.send('You must use the gameId to get a link for a completed game. See `!tak history` to get the gameId.');
+            sendMessage(msg, 'You must use the gameId to get a link for a completed game. See `!tak history` to get the gameId.');
             return;
         }
         gameData = getDataFromEncodedHash(encodedHash);
@@ -412,20 +420,20 @@ async function handleLink(msg, gameId) {
 
     let ptn = getPtnFromFile(gameId);
     if (!ptn) {
-        msg.channel.send('No game with that id.');
+        sendMessage(msg, 'No game with that id.');
     } else {
-        msg.channel.send('<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
+        sendMessage(msg, '<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
     }
 }
 
 function handleHistory(msg) {
-    msg.channel.send('The history command is temporarily disabled.');
+    sendMessage(msg, 'The history command is temporarily disabled.');
     // let historyData = getHistoryFromFile();
-    // msg.channel.send(historyData);
+    // sendMessage(msg, historyData);
 }
 
 function handleHelp(msg) {
-    msg.channel.send('Use `!tak @opponent` to start a new game. You can use --option to specify any of the following:\
+    sendMessage(msg, 'Use `!tak @opponent` to start a new game. You can use --option to specify any of the following:\
 \nSize (optional, default 6): Valid values are 3 through 8.\
 \nKomi (optional, default 0): A flat-score bonus for the second player. Valid values are any half-integer from -20.5 to 20.5.\
 \nOpening (optional, default "swap"): Whether the first two flat moves play for your opponent. Valid values are "swap" and "no-swap"\
@@ -451,7 +459,7 @@ function handleHelp(msg) {
 function handleRandom(msg, arg) {
     let rand = 1+Math.floor(Math.random()*arg);
     if (isNaN(rand)) return;
-    msg.channel.send(rand);
+    sendMessage(msg, rand);
 }
 
 
