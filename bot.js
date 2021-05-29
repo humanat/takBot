@@ -228,22 +228,30 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     let stream = canvas.pngStream();
     stream.pipe(out);
     await once(out, 'finish');
-    await msg.channel.send(messageComment, {
-        files: [{
-            attachment: filename,
-            name: filename
-        }]
-    });
+    try {
+        await msg.channel.send(messageComment, {
+            files: [{
+                attachment: filename,
+                name: filename
+            }]
+        });
+    } catch (err) {
+        console.log(err);
+    }
     fs.unlink(filename, (err) => {
         if (err) console.log(err);
     });
 }
 
 async function sendMessage(msg, content) {
-    if (typeof content == "string" && content.length <= 2000) {
-        await msg.channel.send(content);
-    } else {
-        await msg.channel.send('takBot attempted to send a message that was over 2000 characters in length and failed.');
+    try {
+        if (typeof content == "string" && content.length <= 2000) {
+            await msg.channel.send(content);
+        } else {
+            await msg.channel.send('takBot attempted to send a message that was over 2000 characters in length and failed.');
+        }
+    } catch (err) {
+        console.log(err);
     }
 }
 
