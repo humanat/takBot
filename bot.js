@@ -487,7 +487,7 @@ function handleHelp(msg) {
 function handleRandom(msg, arg) {
     let rand = 1+Math.floor(Math.random()*arg);
     if (isNaN(rand)) return;
-    sendMessage(msg, rand);
+    sendMessage(msg, ""+rand);
 }
 
 
