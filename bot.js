@@ -16,7 +16,7 @@ const theme = "discord";
 // Helper functions
 
 function validPly(cmd) {
-    return (cmd.match(/(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?(\*)?)?/i)) ? true : false;
+    return (cmd.match(/^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?(\*)?)?$/i)) ? true : false;
 }
 
 function getEncodedHashFromFile(msg) {
