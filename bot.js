@@ -5,11 +5,12 @@ const crypto = require('crypto');
 const auth = require('./auth.json');
 const parser = require('minimist');
 const {TPStoCanvas} = require('./TPS-Ninja/src');
+const {themes} = require('./TPS-Ninja/src/themes');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 
 const client = new Discord.Client();
-const theme = "discord";
+const defaultTheme = "discord";
 
 
 
@@ -30,7 +31,7 @@ function getEncodedHashFromFile(msg) {
     } catch (err) {
         // On error we assume that the file doesn't exist
     }
-} 
+}
 
 function saveEncodedHashToFile(msg, encodedHash) {
     let dirname = 'data/' + msg.channel.id;
@@ -81,15 +82,15 @@ function cleanupFiles(msg) {
 }
 
 function getDataFromEncodedHash(encodedHash) {
-    let gameHash = lzutf8.decompress(decodeURI(encodedHash.replaceAll('_', '/')), {'inputEncoding': 'Base64'});
-    let playersString = gameHash.split('___')[0];
+    let gameHash = lzutf8.decompress(decodeURI(encodedHash.replace(/_/g, '/')), {'inputEncoding': 'Base64'}).split('___');
+    let playersString = gameHash[0];
     let players = playersString.split('_');
-    let tps = gameHash.split('___')[1];
+    let tps = gameHash[1] || "";
     let turnMarker = tps.split('__')[1];
-    tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
-    let komi = gameHash.split('___')[2] ? gameHash.split('___')[2] : 0;
-    let gameId = gameHash.split('___')[3] ? gameHash.split('___')[3] : 0;
-    let opening = gameHash.split('___')[4] ? gameHash.split('___')[4] : 'swap';
+    tps = tps.replace(/__/g, ' ').replace(/_/g, ',').replace(/-/g, '/');
+    let komi = gameHash[2] || 0;
+    let gameId = gameHash[3] || 0;
+    let opening = gameHash[4] || 'swap';
     return {
         'player1': players[0],
         'player2': players[1],
@@ -103,11 +104,11 @@ function getDataFromEncodedHash(encodedHash) {
 
 function encodeHashFromData(gameData) {
     let gameHash = gameData.player1 + '_' + gameData.player2
-            + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
+            + '___' + gameData.tps.replace(/\//g, '-').replace(/,/g, '_').replace(/ /g, '__')
             + '___' + gameData.komi
             + '___' + gameData.gameId
             + '___' + gameData.opening
-    return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
+    return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replace(/\//g, '_');
 }
 
 function createPtnFile(gameData) {
@@ -312,8 +313,9 @@ function handleNew(msg, options) {
                 'komi': komi,
                 'player1': player1.username,
                 'player2': player2.username,
+                'bgAlpha': 0,
                 'padding': false,
-                'theme': theme,
+                'theme': getTheme(msg),
                 'opening': opening
             });
         } catch (error) {
@@ -323,7 +325,7 @@ function handleNew(msg, options) {
 
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi, 'opening': opening});
         let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'opening': opening});
-        let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
+        let messageComment = 'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
         saveEncodedHashToFile(msg, encodedHash);
         sendPngToDiscord(msg, canvas, messageComment);
     }
@@ -363,8 +365,9 @@ async function handleMove(msg, ply) {
             'komi': gameData.komi,
             'player1': playerData.player1,
             'player2': playerData.player2,
+            'bgAlpha': 0,
             'padding': false,
-            'theme': theme,
+            'theme': getTheme(msg),
             'opening': gameData.opening
         });
     } catch (err) {
@@ -459,6 +462,44 @@ function handleHistory(msg, page="1") {
     }
 }
 
+function getTheme(msg) {
+    try {
+        return fs.readFileSync('channel-themes/' + msg.channel.id, 'utf8') || defaultTheme;
+    } catch (err) {
+        if (!err.message.includes('no such file or directory')) {
+            console.log(err);
+        }
+    }
+    return defaultTheme;
+}
+
+function handleTheme(msg, theme) {
+    if (theme) {
+        let parsedTheme = null;
+        if (theme[0] === "{") {
+            try {
+                parsedTheme = JSON.parse(theme);
+            } catch (err) {
+                console.log(err);
+            }
+        } else {
+            parsedTheme = themes.find(builtIn => builtIn.id === theme);
+        }
+        if (!parsedTheme) {
+            return sendMessage(msg, 'Invalid theme');
+        }
+        try {
+            fs.mkdirSync('channel-themes', {recursive:true});
+            fs.writeFileSync('channel-themes/' + msg.channel.id, theme);
+            sendMessage(msg, 'Channel theme set.');
+        } catch (err) {
+            console.log(err);
+        }
+    } else {
+        sendMessage(msg, getTheme(msg));
+    }
+}
+
 function handleHelp(msg) {
     sendMessage(msg, 'Use `!tak @opponent` to start a new game. You can use --option to specify any of the following:\
 \nSize (optional, default 6): Valid values are 3 through 8.\
@@ -481,6 +522,9 @@ function handleHelp(msg) {
 \n!tak link <gameId>\
 \n!tak history\
 \n!tak history <pageNumber>\
+\n!tak themes\
+\n!tak theme <themId>\
+\n!tak theme <customTheme>\
 \n<while playing, any valid ply on its own line>```');
 }
 
@@ -516,6 +560,12 @@ client.on('message', msg => {
                 break;
             case 'history':
                 handleHistory(msg, args[1]);
+                break;
+            case 'theme':
+                handleTheme(msg, args.slice(1).join(" "));
+                break;
+            case 'themes':
+                sendMessage(msg, themes.map(t => t.id).join("\n"));
                 break;
             case 'end':
                 handleEnd(msg);
