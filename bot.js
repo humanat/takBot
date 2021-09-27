@@ -522,6 +522,9 @@ function handleHelp(msg) {
 \n!tak link <gameId>\
 \n!tak history\
 \n!tak history <pageNumber>\
+\n!tak themes\
+\n!tak theme <themId>\
+\n!tak theme <customTheme>\
 \n<while playing, any valid ply on its own line>```');
 }
 
