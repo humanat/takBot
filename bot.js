@@ -30,7 +30,7 @@ function getEncodedHashFromFile(msg) {
     } catch (err) {
         // On error we assume that the file doesn't exist
     }
-} 
+}
 
 function saveEncodedHashToFile(msg, encodedHash) {
     let dirname = 'data/' + msg.channel.id;
@@ -81,15 +81,15 @@ function cleanupFiles(msg) {
 }
 
 function getDataFromEncodedHash(encodedHash) {
-    let gameHash = lzutf8.decompress(decodeURI(encodedHash.replaceAll('_', '/')), {'inputEncoding': 'Base64'});
-    let playersString = gameHash.split('___')[0];
+    let gameHash = lzutf8.decompress(decodeURI(encodedHash.replace(/_/g, '/')), {'inputEncoding': 'Base64'}).split('___');
+    let playersString = gameHash[0];
     let players = playersString.split('_');
-    let tps = gameHash.split('___')[1];
+    let tps = gameHash[1] || "";
     let turnMarker = tps.split('__')[1];
-    tps = tps.replaceAll('__', ' ').replaceAll('_', ',').replaceAll('-', '/');
-    let komi = gameHash.split('___')[2] ? gameHash.split('___')[2] : 0;
-    let gameId = gameHash.split('___')[3] ? gameHash.split('___')[3] : 0;
-    let opening = gameHash.split('___')[4] ? gameHash.split('___')[4] : 'swap';
+    tps = tps.replace(/__/g, ' ').replace(/_/g, ',').replace(/-/g, '/');
+    let komi = gameHash[2] || 0;
+    let gameId = gameHash[3] || 0;
+    let opening = gameHash[4] || 'swap';
     return {
         'player1': players[0],
         'player2': players[1],
@@ -103,11 +103,11 @@ function getDataFromEncodedHash(encodedHash) {
 
 function encodeHashFromData(gameData) {
     let gameHash = gameData.player1 + '_' + gameData.player2
-            + '___' + gameData.tps.replaceAll('/', '-').replaceAll(',', '_').replaceAll(' ', '__')
+            + '___' + gameData.tps.replace(/\//g, '-').replace(/,/g, '_').replace(/ /g, '__')
             + '___' + gameData.komi
             + '___' + gameData.gameId
             + '___' + gameData.opening
-    return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replaceAll('/', '_');
+    return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replace(/\//g, '_');
 }
 
 function createPtnFile(gameData) {
