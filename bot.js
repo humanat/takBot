@@ -323,7 +323,7 @@ function handleNew(msg, options) {
 
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi, 'opening': opening});
         let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'opening': opening});
-        let messageComment = 'Type a valid move in ptn notation to play. (<https://ustak.org/portable-tak-notation/>)';
+        let messageComment = 'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
         saveEncodedHashToFile(msg, encodedHash);
         sendPngToDiscord(msg, canvas, messageComment);
     }
