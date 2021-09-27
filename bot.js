@@ -561,6 +561,9 @@ client.on('message', msg => {
             case 'theme':
                 handleTheme(msg, args.slice(1).join(" "));
                 break;
+            case 'themes':
+                sendMessage(msg, themes.map(t => t.id).join("\n"));
+                break;
             case 'end':
                 handleEnd(msg);
                 break;
