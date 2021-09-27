@@ -5,11 +5,12 @@ const crypto = require('crypto');
 const auth = require('./auth.json');
 const parser = require('minimist');
 const {TPStoCanvas} = require('./TPS-Ninja/src');
+const {themes} = require('./TPS-Ninja/src/themes');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 
 const client = new Discord.Client();
-const theme = "discord";
+const defaultTheme = "discord";
 
 
 
@@ -312,8 +313,9 @@ function handleNew(msg, options) {
                 'komi': komi,
                 'player1': player1.username,
                 'player2': player2.username,
+                'bgAlpha': 0,
                 'padding': false,
-                'theme': theme,
+                'theme': getTheme(msg),
                 'opening': opening
             });
         } catch (error) {
@@ -363,8 +365,9 @@ async function handleMove(msg, ply) {
             'komi': gameData.komi,
             'player1': playerData.player1,
             'player2': playerData.player2,
+            'bgAlpha': 0,
             'padding': false,
-            'theme': theme,
+            'theme': getTheme(msg),
             'opening': gameData.opening
         });
     } catch (err) {
@@ -459,6 +462,44 @@ function handleHistory(msg, page="1") {
     }
 }
 
+function getTheme(msg) {
+    try {
+        return fs.readFileSync('channel-themes/' + msg.channel.id, 'utf8') || defaultTheme;
+    } catch (err) {
+        if (!err.message.includes('no such file or directory')) {
+            console.log(err);
+        }
+    }
+    return defaultTheme;
+}
+
+function handleTheme(msg, theme) {
+    if (theme) {
+        let parsedTheme = null;
+        if (theme[0] === "{") {
+            try {
+                parsedTheme = JSON.parse(theme);
+            } catch (err) {
+                console.log(err);
+            }
+        } else {
+            parsedTheme = themes.find(builtIn => builtIn.id === theme);
+        }
+        if (!parsedTheme) {
+            return sendMessage(msg, 'Invalid theme');
+        }
+        try {
+            fs.mkdirSync('channel-themes', {recursive:true});
+            fs.writeFileSync('channel-themes/' + msg.channel.id, theme);
+            sendMessage(msg, 'Channel theme set.');
+        } catch (err) {
+            console.log(err);
+        }
+    } else {
+        sendMessage(msg, getTheme(msg));
+    }
+}
+
 function handleHelp(msg) {
     sendMessage(msg, 'Use `!tak @opponent` to start a new game. You can use --option to specify any of the following:\
 \nSize (optional, default 6): Valid values are 3 through 8.\
@@ -516,6 +557,9 @@ client.on('message', msg => {
                 break;
             case 'history':
                 handleHistory(msg, args[1]);
+                break;
+            case 'theme':
+                handleTheme(msg, args.slice(1).join(" "));
                 break;
             case 'end':
                 handleEnd(msg);
