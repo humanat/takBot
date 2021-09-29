@@ -330,13 +330,13 @@ async function handleNew(msg, options) {
         if (useNewChannel) {
             channel = await msg.guild.channels.create(player1.username+'-vs-'+player2.username, {
                 parent: msg.channel.parent,
-                permissionOverwrites: [{
-                    id: player1.id,
-                    allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
-                },{
-                    id: player2.id,
-                    allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
-                }]
+                // permissionOverwrites: [{
+                //     id: player1.id,
+                //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
+                // },{
+                //     id: player2.id,
+                //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
+                // }]
             });
         }
 
