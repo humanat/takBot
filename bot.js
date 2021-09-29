@@ -8,6 +8,7 @@ const {TPStoCanvas} = require('./TPS-Ninja/src');
 const {themes} = require('./TPS-Ninja/src/themes');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
+const {Permissions} = require('discord.js');
 
 const client = new Discord.Client();
 const defaultTheme = "discord";
@@ -33,8 +34,8 @@ function getEncodedHashFromFile(msg) {
     }
 }
 
-function saveEncodedHashToFile(msg, encodedHash) {
-    let dirname = 'data/' + msg.channel.id;
+function saveEncodedHashToFile(channel, encodedHash) {
+    let dirname = 'data/' + channel.id;
     try {
         fs.mkdirSync(dirname, {recursive:true});
     } catch (err) {
@@ -46,7 +47,7 @@ function saveEncodedHashToFile(msg, encodedHash) {
             filename = '0' + filename;
         }
     }
-    filename = 'data/' + msg.channel.id + '/' + filename + '.data';
+    filename = 'data/' + channel.id + '/' + filename + '.data';
     try {
         fs.writeFileSync(filename, encodedHash);
     } catch (err) {
@@ -230,19 +231,19 @@ async function fetchPlayerData(gameData) {
 
 // Functions to send to Discord
 
-async function sendPngToDiscord(msg, canvas, messageComment) {
+async function sendPngToDiscord(channel, canvas, messageComment) {
     try {
         fs.mkdirSync('images', {recursive:true});
     } catch (err) {
         console.log(err);
     }
-    let filename = 'images/' + msg.channel.id + '.png';
+    let filename = 'images/' + channel.id + '.png';
     let out = fs.createWriteStream(filename);
     let stream = canvas.pngStream();
     stream.pipe(out);
     await once(out, 'finish');
     try {
-        await msg.channel.send(messageComment, {
+        await channel.send(messageComment, {
             files: [{
                 attachment: filename,
                 name: filename
@@ -272,7 +273,7 @@ async function sendMessage(msg, content) {
 
 // Major handler methods
 
-function handleNew(msg, options) {
+async function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
         sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
     } else if (checkForOngoingGame(msg)) {
@@ -306,6 +307,8 @@ function handleNew(msg, options) {
             return;
         }
 
+        let useNewChannel = options.newChannel ? options.newChannel : false;
+
         let canvas;
         try {
             canvas = TPStoCanvas({
@@ -323,11 +326,25 @@ function handleNew(msg, options) {
             return;
         }
 
+        let channel = msg.channel;
+        if (useNewChannel) {
+            channel = await msg.guild.channels.create(player1.username+'-vs-'+player2.username, {
+                parent: msg.channel.parent,
+                permissionOverwrites: [{
+                    id: player1.id,
+                    allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
+                },{
+                    id: player2.id,
+                    allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
+                }]
+            });
+        }
+
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi, 'opening': opening});
         let encodedHash = encodeHashFromData({'player1': player1.id, 'player2': player2.id, 'tps': canvas.id, 'komi': komi, 'gameId': gameId, 'opening': opening});
         let messageComment = 'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
-        saveEncodedHashToFile(msg, encodedHash);
-        sendPngToDiscord(msg, canvas, messageComment);
+        saveEncodedHashToFile(channel, encodedHash);
+        sendPngToDiscord(channel, canvas, messageComment);
     }
 }
 
@@ -389,10 +406,10 @@ async function handleMove(msg, ply) {
         if (gameData.gameId != 0) addToHistoryFile({'gameId': gameData.gameId, 'player1': playerData.player1, 'player2': playerData.player2, 'komi': gameData.komi, 'opening': gameData.opening, 'result': canvas.id});
     } else {
         encodedHash = encodeHashFromData({'player1': gameData.player1, 'player2': gameData.player2, 'tps': canvas.id, 'komi': gameData.komi, 'gameId': gameData.gameId, 'opening': gameData.opening});
-        saveEncodedHashToFile(msg, encodedHash);
+        saveEncodedHashToFile(msg.channel, encodedHash);
     }
 
-    await sendPngToDiscord(msg, canvas, messageComment);
+    await sendPngToDiscord(msg.channel, canvas, messageComment);
 
     if (canvas.isGameEnd) {
         await sendMessage(msg, 'Here\'s a link to the completed game:');
