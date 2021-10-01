@@ -4,7 +4,7 @@ const lzutf8 = require('lzutf8');
 const crypto = require('crypto');
 const auth = require('./auth.json');
 const parser = require('minimist');
-const {TPStoCanvas} = require('./TPS-Ninja/src');
+const {TPStoCanvas, parseTPS, parseTheme} = require('./TPS-Ninja/src');
 const {themes} = require('./TPS-Ninja/src/themes');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
@@ -289,39 +289,64 @@ async function handleNew(msg, options) {
             player2 = msg.author;
         }
 
-        let size = options.size ? options.size : 6;
-        if (size < 3 || size > 8) {
-            sendMessage(msg, 'Invalid board size.');
-            return;
+        let tps = options.tps || options.size || 6;
+        let size;
+        if (options.tps) {
+            tps += " " + options._[0] + " " + options._[1];
+            let tpsParsed = parseTPS(tps);
+            if (tpsParsed.error) {
+                sendMessage(msg, tpsParsed.error);
+                return;
+            }
+            size = tpsParsed.size;
+        } else {
+            size = tps;
+            if (size < 3 || size > 8) {
+                sendMessage(msg, 'Invalid board size.');
+                return;
+            }
         }
 
-        let komi = options.komi ? options.komi : 0;
+        let komi = options.komi || 0;
         if (komi < -20.5 || komi > 20.5) {
             sendMessage(msg, 'Invalid komi.');
             return;
         }
 
-        let opening = options.opening ? options.opening : 'swap';
+        let opening = options.opening || 'swap';
         if (opening != 'swap' && opening != 'no-swap') {
             sendMessage(msg, 'Invalid opening.');
             return;
         }
 
-        let useNewChannel = options.newChannel ? options.newChannel : false;
+        let theme;
+        if (options.theme) {
+            try {
+                theme = parseTheme(options.theme);
+            } catch(err) {
+                sendMessage(msg, 'Invalid theme');
+                return;
+            }
+        } else {
+            theme = defaultTheme;
+        }
+
+        let useNewChannel = Boolean(options.newChannel);
 
         let canvas;
         try {
             canvas = TPStoCanvas({
-                'tps': size,
+                'tps': tps,
                 'komi': komi,
                 'player1': player1.username,
                 'player2': player2.username,
                 'bgAlpha': 0,
                 'padding': false,
-                'theme': getTheme(msg),
+                'theme': theme,
                 'opening': opening
             });
         } catch (error) {
+            console.log(error);
             sendMessage(msg, 'An issue occurred while generating the starting board.');
             return;
         }
@@ -338,6 +363,10 @@ async function handleNew(msg, options) {
                 //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
                 // }]
             });
+        }
+
+        if (options.theme) {
+            setTheme({ channel }, options.theme, true);
         }
 
         let gameId = createPtnFile({'player1': player1.username, 'player2': player2.username, 'size': size, 'komi': komi, 'opening': opening});
@@ -490,28 +519,27 @@ function getTheme(msg) {
     return defaultTheme;
 }
 
+function setTheme(msg, theme, silent = false) {
+    try {
+        fs.mkdirSync('channel-themes', {recursive:true});
+        fs.writeFileSync('channel-themes/' + msg.channel.id, theme);
+        if (!silent) {
+            sendMessage(msg, 'Channel theme set.');
+        }
+    } catch (err) {
+        console.log(err);
+    }
+}
+
 function handleTheme(msg, theme) {
     if (theme) {
-        let parsedTheme = null;
-        if (theme[0] === "{") {
-            try {
-                parsedTheme = JSON.parse(theme);
-            } catch (err) {
-                console.log(err);
-            }
-        } else {
-            parsedTheme = themes.find(builtIn => builtIn.id === theme);
-        }
-        if (!parsedTheme) {
-            return sendMessage(msg, 'Invalid theme');
-        }
         try {
-            fs.mkdirSync('channel-themes', {recursive:true});
-            fs.writeFileSync('channel-themes/' + msg.channel.id, theme);
-            sendMessage(msg, 'Channel theme set.');
-        } catch (err) {
-            console.log(err);
+            parseTheme(theme);
+        } catch(err) {
+            sendMessage(msg, 'Invalid theme');
+            return;
         }
+        setTheme(msg, theme);
     } else {
         sendMessage(msg, getTheme(msg));
     }
@@ -524,6 +552,7 @@ function handleHelp(msg) {
 \nOpening (optional, default "swap"): Whether the first two flat moves play for your opponent. Valid values are "swap" and "no-swap"\
 \nWhite (optional, boolean): Seats the message author as the White player.\
 \nRandom (optional, boolean): Seats the message author randomly as White or Black.\
+\nTPS (optional): Begins the game from the specified board state.\
 \n\nBy default the challenged player plays the white pieces.\
 \n\nThe bot tracks games through the channel id.\
 \nIf you want to run multiple games at once, please use different channels.\
@@ -540,7 +569,7 @@ function handleHelp(msg) {
 \n!tak history\
 \n!tak history <pageNumber>\
 \n!tak themes\
-\n!tak theme <themId>\
+\n!tak theme <themeId>\
 \n!tak theme <customTheme>\
 \n<while playing, any valid ply on its own line>```');
 }
