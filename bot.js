@@ -28,6 +28,9 @@ function isOldVersion(msg) {
 
 function getLastFilename(msg) {
     const dirname = `data/${msg.channel.id}/`;
+    if (!fs.existsSync(dirname)) {
+        return false;
+    }
     let files = fs.readdirSync(dirname).filter(file => file != 'meta');
     files.sort();
     return files && files.length ? dirname + files[files.length-1] : false;
@@ -505,7 +508,7 @@ async function handleNew(msg, options) {
                         //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
                     // }]
                 });
-                sendMessage(msg, `Here you go!\n<#${channel.id}>`);
+                sendMessage(msg, `<#${channel.id}>`);
             } catch (error) {
                 console.error(error);
                 sendMessage(msg, 'I wasn\'t able to create a new channel.');
@@ -539,10 +542,10 @@ async function handleEnd(msg) {
         const gameData = await getGameData(msg);
         if (gameData && gameData.gameId) {
             cleanupFiles(msg);
-            deletePtnFile(gameData.gameId);
-            msg.channel.setName(msg.channel.name.replace('🆚', ''));
+            // deletePtnFile(gameData.gameId);
             sendMessage(msg, 'Ongoing game in this channel has been removed.');
         }
+        msg.channel.setName(msg.channel.name.replace('🆚', ''));
     } else {
         sendMessage(msg, 'There is no ongoing game in this channel.');
     }
