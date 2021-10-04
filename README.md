@@ -22,14 +22,16 @@ Example commands:
 ```!tak help
 !tak @opponent
 !tak @opponent --size 5 --komi 1 --opening no-swap --random
-!tak undo
-!tak end
-!tak delete
-!tak link
-!tak link <game ID>
-!tak history
+!tak undo                 // Undo the previous turn
+!tak end                  // End the current game
+!tak delete               // Delete the current game channel
+!tak link                 // PTN Ninja link for current game
+!tak link <game ID>       // PTN Ninja link for finished game
+!tak history              // List finished games
 !tak history <pageNumber>
-!tak themes
-!tak theme <theme ID>
+!tak themes               // List themes
+!tak theme                // Print the current theme
+!tak theme <theme ID>     // Set the current theme
 !tak theme <customTheme>
+!tak lobby                // Toggle newChannel as default
 <while playing, any valid ply on its own line>```

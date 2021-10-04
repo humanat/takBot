@@ -490,7 +490,7 @@ async function handleNew(msg, options) {
         const gameId = createPtnFile(gameData);
         gameData.gameId = gameId;
 
-        let useNewChannel = Boolean(options.newChannel);
+        let useNewChannel = Boolean(options.newChannel) || isLobby(msg);
 
         let channel = msg.channel;
         if (useNewChannel) {
@@ -552,7 +552,34 @@ async function handleDelete(msg) {
     if (checkForOngoingGame(msg)) {
         sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
-        cleanupFiles(msg, true);
+        if (isLobby(msg)) {
+            sendMessage(msg, 'This is a public channel.');
+        } else {
+            cleanupFiles(msg, true);
+        }
+    }
+}
+
+function handleLobby(msg) {
+    if (isLobby(msg)) {
+        toggleLobby(msg);
+        sendMessage(msg, 'You may now play games here.');
+    } else {
+        toggleLobby(msg);
+        sendMessage(msg, 'Games are no longer allowed here.');
+    }
+}
+
+function isLobby(msg) {
+    return fs.existsSync(`data/${msg.channel.id}/meta/lobby`);
+}
+
+function toggleLobby(msg) {
+    if (isLobby(msg)) {
+        return fs.unlinkSync(`data/${msg.channel.id}/meta/lobby`);
+    } else {
+        fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
+        return fs.writeFileSync(`data/${msg.channel.id}/meta/lobby`, '');
     }
 }
 
@@ -771,6 +798,9 @@ client.on('message', msg => {
                 break;
             case 'delete':
                 handleDelete(msg);
+                break;
+            case 'lobby':
+                handleLobby(msg);
                 break;
             default:
                 args.shift();
