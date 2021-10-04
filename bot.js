@@ -498,7 +498,7 @@ async function handleNew(msg, options) {
         let channel = msg.channel;
         if (useNewChannel) {
             try {
-                channel = await msg.guild.channels.create(`🆚${gameData.player1}-vs-${gameData.player2}`, {
+                channel = await msg.guild.channels.create(`${gameData.player1}🆚${gameData.player2}`, {
                     parent: msg.channel.parent,
                     // permissionOverwrites: [{
                         //     id: player1.id,
@@ -514,8 +514,8 @@ async function handleNew(msg, options) {
                 sendMessage(msg, 'I wasn\'t able to create a new channel.');
                 return;
             }
-        } else if (!msg.channel.name.startsWith('🆚')) {
-            msg.channel.setName('🆚' + msg.channel.name);
+        } else if (!msg.channel.name.includes('🆚')) {
+            msg.channel.setName(msg.channel.name.replace('-vs-', '🆚'));
         }
 
         let canvas;
@@ -545,7 +545,7 @@ async function handleEnd(msg) {
             // deletePtnFile(gameData.gameId);
             sendMessage(msg, 'Ongoing game in this channel has been removed.');
         }
-        msg.channel.setName(msg.channel.name.replace('🆚', ''));
+        msg.channel.setName(msg.channel.name.replace('🆚', '-vs-'));
     } else {
         sendMessage(msg, 'There is no ongoing game in this channel.');
     }
@@ -641,7 +641,7 @@ async function handleMove(msg, ply) {
                 'result': canvas.id
             });
         }
-        await msg.channel.setName(msg.channel.name.replace('🆚', ''));
+        await msg.channel.setName(msg.channel.name.replace('🆚', '-vs-'));
         await sendPngToDiscord(msg.channel, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
         await sendMessage(msg, 'Here\'s a link to the completed game:');
         handleLink(msg, gameData.gameId);
