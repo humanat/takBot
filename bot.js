@@ -84,7 +84,7 @@ function saveGameData(msg, { gameData, tps, ply }) {
             'gameId': gameData.gameId,
             'opening': gameData.opening
         });
-        saveEncodedHashToFile(msg.channel, encodedHash);
+        saveEncodedHashToFile(msg, encodedHash);
     } else {
         const channelDir = `data/${msg.channel.id}/`;
         // Meta data
@@ -116,9 +116,22 @@ function saveGameData(msg, { gameData, tps, ply }) {
     }
 }
 
+function drawBoard(gameData, theme, ply) {
+    let options = {
+        ...gameData,
+        theme,
+        padding: false,
+        bgAlpha: 0
+    }
+    if (ply) {
+        options.ply = ply;
+    }
+    return TPStoCanvas(options);
+}
+
 // Backward compatibility
-function saveEncodedHashToFile(channel, encodedHash) {
-    let dirname = 'data/' + channel.id;
+function saveEncodedHashToFile(msg, encodedHash) {
+    let dirname = 'data/' + msg.channel.id;
     try {
         fs.mkdirSync(dirname, {recursive:true});
     } catch (err) {
@@ -130,7 +143,7 @@ function saveEncodedHashToFile(channel, encodedHash) {
             filename = '0' + filename;
         }
     }
-    filename = 'data/' + channel.id + '/' + filename + '.data';
+    filename = 'data/' + msg.channel.id + '/' + filename + '.data';
     try {
         fs.writeFileSync(filename, encodedHash);
     } catch (err) {
@@ -157,10 +170,26 @@ function cleanupFiles(msg, deleteChannel=false) {
     let dirname = 'data/' + msg.channel.id;
     try {
         let theme;
-        if (!deleteChannel) theme = getTheme(msg);
+        let wasLobby;
+        if (!deleteChannel) {
+            theme = getTheme(msg);
+            wasLobby = isLobby(msg);
+        }
+
         fs.rmdirSync(dirname, {recursive:true, force:true});
-        if (!deleteChannel) setTheme(msg, theme, true);
-        else msg.channel.delete();
+
+        if (!deleteChannel) {
+            setTheme(msg, theme, true);
+            if (wasLobby) {
+                toggleLobby(msg);
+            }
+        } else {
+            try {
+                msg.channel.delete();
+            } catch(err) {
+                console.error(err);
+            }
+        }
     } catch (err) {
         console.error(err);
     }
@@ -349,19 +378,19 @@ async function fetchPlayerNames(gameData) {
 
 // Functions to send to Discord
 
-async function sendPngToDiscord(channel, canvas, messageComment) {
+async function sendPngToDiscord(msg, canvas, messageComment) {
     try {
         fs.mkdirSync('images', {recursive:true});
     } catch (err) {
         console.error(err);
     }
-    let filename = 'images/' + channel.id + '.png';
+    let filename = 'images/' + msg.channel.id + '.png';
     let out = fs.createWriteStream(filename);
     let stream = canvas.pngStream();
     stream.pipe(out);
     await once(out, 'finish');
     try {
-        await channel.send(messageComment, {
+        await msg.channel.send(messageComment, {
             files: [{
                 attachment: filename,
                 name: filename
@@ -380,7 +409,7 @@ async function sendMessage(msg, content) {
         if (typeof content == "string" && content.length <= 2000) {
             await msg.channel.send(content);
         } else {
-            await msg.channel.send('I tried to send a message but it was too long 😢');
+            await msg.channel.send('I wanted to send a message but it was too long 😢');
         }
     } catch (err) {
         console.error(err);
@@ -398,24 +427,11 @@ async function deleteLastGameMessage(msg) {
 
 // Major handler methods
 
-function drawBoard(gameData, theme, ply) {
-    let options = {
-        ...gameData,
-        theme,
-        padding: false,
-        bgAlpha: 0
-    }
-    if (ply) {
-        options.ply = ply;
-    }
-    return TPStoCanvas(options);
-}
-
 async function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
-        sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
+        return sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
     } else if (checkForOngoingGame(msg)) {
-        sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
+        return sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
     } else {
         let player1;
         let player2;
@@ -435,31 +451,27 @@ async function handleNew(msg, options) {
             tps += " " + options._[0] + " " + options._[1];
             tpsParsed = parseTPS(tps);
             if (tpsParsed.error) {
-                sendMessage(msg, tpsParsed.error);
-                return;
+                return sendMessage(msg, tpsParsed.error);
             }
             size = tpsParsed.size;
         } else {
             // Size
             size = tps;
             if (size < 3 || size > 8) {
-                sendMessage(msg, 'Invalid board size.');
-                return;
+                return sendMessage(msg, 'Invalid board size.');
             }
         }
 
         // Komi
         let komi = options.komi || 0;
         if (komi < -20.5 || komi > 20.5) {
-            sendMessage(msg, 'Invalid komi.');
-            return;
+            return sendMessage(msg, 'Invalid komi.');
         }
 
         // Opening
         let opening = options.opening || 'swap';
         if (opening != 'swap' && opening != 'no-swap') {
-            sendMessage(msg, 'Invalid opening.');
-            return;
+            return sendMessage(msg, 'Invalid opening.');
         }
 
         // Theme
@@ -468,8 +480,7 @@ async function handleNew(msg, options) {
             try {
                 theme = parseTheme(options.theme);
             } catch(err) {
-                sendMessage(msg, 'Invalid theme');
-                return;
+                return sendMessage(msg, 'Invalid theme');
             }
         } else {
             theme = getTheme(msg);
@@ -509,11 +520,10 @@ async function handleNew(msg, options) {
                         //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
                     // }]
                 });
-                sendMessage(msg, `<#${channel.id}>`);
-            } catch (error) {
-                console.error(error);
-                sendMessage(msg, 'I wasn\'t able to create a new channel.');
-                return;
+                await sendMessage(msg, `<#${channel.id}>`);
+            } catch (err) {
+                console.error(err);
+                return sendMessage(msg, 'I wasn\'t able to create a new channel.');
             }
         } else {
             msg.channel.setName(channelName);
@@ -522,10 +532,9 @@ async function handleNew(msg, options) {
         let canvas;
         try {
             canvas = drawBoard({ ...gameData, tps }, theme);
-        } catch (error) {
-            console.log(error);
-            sendMessage(msg, 'Something went wrong when I tried to draw the board.');
-            return;
+        } catch (err) {
+            console.error(err);
+            return sendMessage(msg, 'Something went wrong when I tried to draw the board.');
         }
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
@@ -538,24 +547,32 @@ async function handleNew(msg, options) {
     }
 }
 
-function handleEnd(msg) {
+function renameChannel(msg, inProgress) {
+    return msg.channel.setName(
+        inProgress
+            ? msg.channel.name.replace('-vs-', '🆚')
+            : msg.channel.name.replace('🆚', '-vs-')
+    ).catch(err => console.error(err));
+}
+
+async function handleEnd(msg) {
     if (checkForOngoingGame(msg)) {
-        msg.channel.setName(msg.channel.name.replace('🆚', '-vs-'));
         cleanupFiles(msg);
-        sendMessage(msg, 'Ongoing game in this channel has been removed.');
+        await sendMessage(msg, 'Ongoing game in this channel has been removed.');
+        return renameChannel(msg, false);
     } else {
-        sendMessage(msg, 'There is no ongoing game in this channel.');
+        return sendMessage(msg, 'There is no ongoing game in this channel.');
     }
 }
 
 function handleDelete(msg) {
     if (checkForOngoingGame(msg)) {
-        sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
+        return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
         if (isLobby(msg)) {
-            sendMessage(msg, 'This is a public channel.');
+            return sendMessage(msg, 'This is a public channel.');
         } else {
-            cleanupFiles(msg, true);
+            return cleanupFiles(msg, true);
         }
     }
 }
@@ -563,10 +580,10 @@ function handleDelete(msg) {
 function handleLobby(msg) {
     if (isLobby(msg)) {
         toggleLobby(msg);
-        sendMessage(msg, 'You may now play games here.');
+        return sendMessage(msg, 'You may now play games here.');
     } else {
         toggleLobby(msg);
-        sendMessage(msg, 'Games are no longer allowed here.');
+        return sendMessage(msg, 'Games are no longer allowed here.');
     }
 }
 
@@ -593,8 +610,7 @@ async function handleMove(msg, ply) {
 
     if ((gameData.turnMarker === '1' && msg.author.id != gameData.player1Id)
             || (gameData.turnMarker === '2' && msg.author.id != gameData.player2Id)) {
-        sendMessage(msg, 'You are not the active player.');
-        return;
+        return sendMessage(msg, 'You are not the active player.');
     }
 
     let canvas;
@@ -604,8 +620,7 @@ async function handleMove(msg, ply) {
         if (!err.message.includes('Invalid')) {
             console.error(err);
         }
-        sendMessage(msg, 'Invalid move.');
-        return;
+        return sendMessage(msg, 'Invalid move.');
     }
 
     if (gameData.gameId) {
@@ -623,7 +638,10 @@ async function handleMove(msg, ply) {
         } else {
             saveGameData(msg, { tps: canvas.id, ply });
         }
-        await sendPngToDiscord(msg.channel, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+        if (!msg.channel.name.includes('🆚')) {
+            renameChannel(msg, true);
+        }
+        await sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
     } else {
         // Game is over
         const result = canvas.id;
@@ -635,53 +653,52 @@ async function handleMove(msg, ply) {
                 'player2': gameData.player2,
                 'komi': gameData.komi,
                 'opening': gameData.opening,
-                'result': canvas.id
+                'result': result
             });
         }
-        await msg.channel.setName(msg.channel.name.replace('🆚', '-vs-'));
-        await sendPngToDiscord(msg.channel, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
+        await sendPngToDiscord(msg, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
         await sendMessage(msg, 'Here\'s a link to the completed game:');
-        handleLink(msg, gameData.gameId);
+        await handleLink(msg, gameData.gameId);
+        return renameChannel(msg, false);
     }
 }
 
 async function handleUndo(msg) {
     let gameData = await getGameData(msg);
     if (!gameData) {
-        sendMessage(msg, 'You cannot undo a completed game.');
-        return;
+        return sendMessage(msg, 'You cannot undo a completed game.');
     }
 
     if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
         return;
     }
 
-    if ((gameData.turnMarker === '1' && msg.author.id != gameData.player2Id)
-            || (gameData.turnMarker === '2' && msg.author.id != gameData.player1Id)) {
-        sendMessage(msg, 'You cannot undo a move that is not your own.');
-        return;
+    if (
+        (gameData.turnMarker === '1' && msg.author.id != gameData.player2Id) ||
+        (gameData.turnMarker === '2' && msg.author.id != gameData.player1Id)
+    ) {
+        return sendMessage(msg, 'You cannot undo a move that is not your own.');
     }
 
     await deleteLastGameMessage(msg);
     deleteLastTurn(msg, gameData);
-    sendMessage(msg, 'Undo complete.');
+    return sendMessage(msg, 'Undo complete.');
 }
 
 async function handleLink(msg, gameId) {
     if (!gameId) {
         let gameData = await getGameData(msg);
         if (!gameData) {
-            sendMessage(msg, 'You must use the game ID to get a link for a completed game. See `!tak history` to get the game ID.');
-            return;
+            return sendMessage(msg, 'You must use the game ID to get a link for a completed game. See `!tak history` to get the game ID.');
         }
         gameId = gameData.gameId;
     }
 
     let ptn = getPtnFromFile(gameId);
     if (!ptn) {
-        sendMessage(msg, 'I couldn\'t find a game with that ID.');
+        return sendMessage(msg, 'I couldn\'t find a game with that ID.');
     } else {
-        sendMessage(msg, '<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
+        return sendMessage(msg, '<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
     }
 }
 
@@ -689,9 +706,9 @@ function handleHistory(msg, page='1') {
     try {
         let historyData = getHistoryFromFile(parseInt(page));
         if (historyData) {
-            sendMessage(msg, historyData);
+            return sendMessage(msg, historyData);
         } else {
-            sendMessage(msg, 'Not a valid page number');
+            return sendMessage(msg, 'Not a valid page number');
         }
     } catch (err) {
         console.error(err);
@@ -725,7 +742,7 @@ async function setTheme(msg, theme, silent = false) {
                 canvas = drawBoard(gameData, theme);
                 let nextPlayer = gameData.player1Id;
                 if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
-                return sendPngToDiscord(msg.channel, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+                return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
             }
         }
     } catch (err) {
@@ -738,26 +755,25 @@ function handleTheme(msg, theme) {
         try {
             parseTheme(theme);
         } catch(err) {
-            sendMessage(msg, 'Invalid theme');
-            return;
+            return sendMessage(msg, 'Invalid theme');
         }
         setTheme(msg, theme);
     } else {
         theme = getTheme(msg);
 
-        sendMessage(msg, theme[0] === '{' ? `\`\`\`\n${theme}\n\`\`\`` : `\`${theme}\``);
+        return sendMessage(msg, theme[0] === '{' ? `\`\`\`\n${theme}\n\`\`\`` : `\`${theme}\``);
     }
 }
 
 function handleHelp(msg) {
     let readme = fs.readFileSync('README.md', 'utf8');
-    sendMessage(msg, readme.substr(readme.indexOf('\n')+1));
+    return sendMessage(msg, readme.substr(readme.indexOf('\n')+1));
 }
 
 function handleRandom(msg, arg) {
     let rand = 1+Math.floor(Math.random()*arg);
     if (isNaN(rand)) return;
-    sendMessage(msg, ''+rand);
+    return sendMessage(msg, ''+rand);
 }
 
 
@@ -776,49 +792,39 @@ client.on('message', msg => {
         let cmd = args[0];
         switch(cmd) {
             case 'help':
-                handleHelp(msg);
-                break;
+                return handleHelp(msg);
             case 'undo':
-                handleUndo(msg);
-                break;
+                return handleUndo(msg);
             case 'link':
-                handleLink(msg, args[1]);
-                break;
+                return handleLink(msg, args[1]);
             case 'history':
-                handleHistory(msg, args[1]);
-                break;
+                return handleHistory(msg, args[1]);
             case 'theme':
-                handleTheme(msg, args.slice(1).join(' '));
-                break;
+                return handleTheme(msg, args.slice(1).join(' '));
             case 'themes':
-                sendMessage(msg, themes.map(t => t.id).join('\n'));
-                break;
+                return sendMessage(msg, themes.map(t => t.id).join('\n'));
             case 'end':
-                handleEnd(msg);
-                break;
+                return handleEnd(msg);
             case 'delete':
-                handleDelete(msg);
-                break;
+                return handleDelete(msg);
             case 'lobby':
-                handleLobby(msg);
-                break;
+                return handleLobby(msg);
             default:
                 args.shift();
                 let options = parser(args);
-                handleNew(msg, options);
-                break;
+                return handleNew(msg, options);
         }
     } else if (message.length >= 4 && message.substring(0,4).toLowerCase() === '!rng') {
         let args = message.substring(5).split(' ');
         args = args.filter(arg => arg && arg.length);
         if (args.length != 1) return;
-        handleRandom(msg, args[0]);
+        return handleRandom(msg, args[0]);
     } else {
         let args = message.split(' ');
         args = args.filter(arg => arg && arg.length !== 0);
         if (args.length != 1) return;
         if (!validPly(args[0])) return;
-        handleMove(msg, args[0]);
+        return handleMove(msg, args[0]);
     }
 });
 
