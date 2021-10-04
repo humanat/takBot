@@ -23,17 +23,30 @@ function validPly(cmd) {
 
 // Backward compatibility
 function isOldVersion(msg) {
-    return getLastFilename(msg) && !fs.existsSync(`data/${msg.channel.id}/meta/game.json`);
+    const channelDir = `data/${msg.channel.id}/`;
+    return fs.existsSync(channelDir)
+        && fs.readdirSync(channelDir).some(file => file.endsWith('.data'));
 }
 
 function getLastFilename(msg) {
-    const dirname = `data/${msg.channel.id}/`;
+    let dirname = `data/${msg.channel.id}/`;
     if (!fs.existsSync(dirname)) {
         return false;
     }
-    let files = fs.readdirSync(dirname).filter(file => file != 'meta');
-    files.sort();
-    return files && files.length ? dirname + files[files.length-1] : false;
+    if (isOldVersion(msg)) {
+        // Backward compatibility
+        let files = fs.readdirSync(dirname).filter(file => file.endsWith('.data'));
+        files.sort();
+        return files && files.length ? dirname + files[files.length-1] : false;
+    } else {
+        dirname += 'tps/';
+        if (!fs.existsSync(dirname)) {
+            return false;
+        }
+        let files = fs.readdirSync(dirname);
+        files.sort();
+        return files && files.length ? dirname + files[files.length-1] : false;
+    }
 }
 
 // Backward compatibility
@@ -62,10 +75,12 @@ async function getGameData(msg) {
             data = JSON.parse(fs.readFileSync(dirname + '/meta/game.json', 'utf8'));
 
             // Get the latest board state
-            let filename = getLastFilename(msg);
-            [data.tps, data.hl] = fs.readFileSync(filename, 'utf8').split('\n');
-            let parsedTPS = parseTPS(data.tps);
-            data.turnMarker = String(parsedTPS.player);
+            if (fs.existsSync(dirname + '/tps')) {
+                let filename = getLastFilename(msg);
+                [data.tps, data.hl] = fs.readFileSync(filename, 'utf8').split('\n');
+                let parsedTPS = parseTPS(data.tps);
+                data.turnMarker = String(parsedTPS.player);
+            }
             return data;
         } catch (err) {
             // On error we assume that the file doesn't exist
@@ -99,17 +114,17 @@ function saveGameData(msg, { gameData, tps, ply }) {
         }
 
         // Board state
+        const tpsDir = channelDir + 'tps/';
         let filename = Date.now() + crypto.randomBytes(2).toString('hex');
-        if (20 - filename.length > 0) {
-            for (let i = 0; i < 20-filename.length; i++) {
-                filename = '0' + filename;
-            }
+        while (filename.length < 19) {
+            filename = '0' + filename;
         }
         if (ply) {
             tps += '\n' + ply;
         }
         try {
-            fs.writeFileSync(channelDir + filename + '.tps', tps);
+            fs.mkdirSync(tpsDir, {recursive:true});
+            fs.writeFileSync(tpsDir + filename + '.tps', tps);
         } catch (err) {
             console.error(err);
         }
@@ -163,25 +178,25 @@ function deleteLastTurn(msg, gameData) {
 }
 
 function checkForOngoingGame(msg) {
-    return fs.existsSync(`data/${msg.channel.id}/meta/game.json`) || getLastFilename(msg);
+    return Boolean(getLastFilename(msg));
 }
 
 function cleanupFiles(msg, channelDeleted=false) {
-    let dirname = 'data/' + msg.channel.id;
+    let dirname = `data/${msg.channel.id}/`;
     try {
-        let theme;
-        let wasLobby;
-        if (!channelDeleted) {
-            theme = getTheme(msg);
-            wasLobby = isLobby(msg);
-        }
-
-        fs.rmdirSync(dirname, {recursive:true, force:true});
-
-        if (!channelDeleted) {
-            setTheme(msg, theme, true);
-            if (!wasLobby) {
-                toggleLobby(msg);
+        if (channelDeleted) {
+            fs.rmdirSync(dirname, {recursive:true, force:true});
+        } else {
+            if (!fs.existsSync(dirname)) {
+                return false;
+            } else if (isOldVersion(msg)) {
+                // Backward compatibility
+                let files = fs.readdirSync(dirname);
+                files.forEach(file => {
+                    if (file.endsWith('.data')) fs.unlinkSync(dirname + file);
+                });
+            } else {
+                return fs.rmdirSync(dirname + 'tps', {recursive:true, force:true});
             }
         }
     } catch (err) {
@@ -560,6 +575,26 @@ async function handleEnd(msg) {
     }
 }
 
+async function handleDelete(msg) {
+    if (checkForOngoingGame(msg)) {
+        return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
+    } else {
+        const gameData = await getGameData(msg);
+        if (!gameData) {
+            return sendMessage(msg, 'I can\'t delete this channel.');
+        } else if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+            return sendMessage(msg, 'Only the previous players may delete the channel.');
+        } else {
+            try {
+                msg.channel.delete();
+            } catch (err) {
+                console.error(err);
+                return sendMessage(msg, 'I wasn\'t able to delete the channel.');
+            }
+        }
+    }
+}
+
 function handleLobby(msg) {
     if (isLobby(msg)) {
         toggleLobby(msg);
@@ -788,6 +823,8 @@ client.on('message', msg => {
                 return sendMessage(msg, themes.map(t => t.id).join('\n'));
             case 'end':
                 return handleEnd(msg);
+            case 'delete':
+                return handleDelete(msg);
             case 'lobby':
                 return handleLobby(msg);
             default:
