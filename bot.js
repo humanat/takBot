@@ -204,8 +204,8 @@ function tagDateTime() {
     };
     const now = new Date();
     return (
-        `[Date "${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())}"]`+
-        `[Time "${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}"]`
+        `[Date "${now.getUTCFullYear()}.${pad(now.getUTCMonth()+1)}.${pad(now.getUTCDate())}"]`+
+        `[Time "${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}"]`
     );
 };
 
