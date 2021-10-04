@@ -537,21 +537,17 @@ async function handleNew(msg, options) {
     }
 }
 
-async function handleEnd(msg) {
+function handleEnd(msg) {
     if (checkForOngoingGame(msg)) {
-        const gameData = await getGameData(msg);
-        if (gameData && gameData.gameId) {
-            cleanupFiles(msg);
-            // deletePtnFile(gameData.gameId);
-            sendMessage(msg, 'Ongoing game in this channel has been removed.');
-        }
         msg.channel.setName(msg.channel.name.replace('🆚', '-vs-'));
+        cleanupFiles(msg);
+        sendMessage(msg, 'Ongoing game in this channel has been removed.');
     } else {
         sendMessage(msg, 'There is no ongoing game in this channel.');
     }
 }
 
-async function handleDelete(msg) {
+function handleDelete(msg) {
     if (checkForOngoingGame(msg)) {
         sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
