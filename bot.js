@@ -496,9 +496,10 @@ async function handleNew(msg, options) {
         let useNewChannel = Boolean(options.newChannel) || isLobby(msg);
 
         let channel = msg.channel;
+        let channelName = `${gameData.player1}🆚${gameData.player2}`;
         if (useNewChannel) {
             try {
-                channel = await msg.guild.channels.create(`${gameData.player1}🆚${gameData.player2}`, {
+                channel = await msg.guild.channels.create(channelName, {
                     parent: msg.channel.parent,
                     // permissionOverwrites: [{
                         //     id: player1.id,
@@ -514,8 +515,8 @@ async function handleNew(msg, options) {
                 sendMessage(msg, 'I wasn\'t able to create a new channel.');
                 return;
             }
-        } else if (!msg.channel.name.includes('🆚')) {
-            msg.channel.setName(msg.channel.name.replace('-vs-', '🆚'));
+        } else {
+            msg.channel.setName(channelName);
         }
 
         let canvas;
