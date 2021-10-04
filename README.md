@@ -25,7 +25,6 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 !tak @opponent --size 5 --komi 1 --opening no-swap --random
 !tak undo                 // Undo the previous turn
 !tak end                  // End the current game
-!tak delete               // Delete the current game channel
 !tak link                 // PTN Ninja link for current game
 !tak link <game ID>       // PTN Ninja link for finished game
 !tak history              // List finished games

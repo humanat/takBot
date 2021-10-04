@@ -166,28 +166,22 @@ function checkForOngoingGame(msg) {
     return fs.existsSync(`data/${msg.channel.id}/meta/game.json`) || getLastFilename(msg);
 }
 
-function cleanupFiles(msg, deleteChannel=false) {
+function cleanupFiles(msg, channelDeleted=false) {
     let dirname = 'data/' + msg.channel.id;
     try {
         let theme;
         let wasLobby;
-        if (!deleteChannel) {
+        if (!channelDeleted) {
             theme = getTheme(msg);
             wasLobby = isLobby(msg);
         }
 
         fs.rmdirSync(dirname, {recursive:true, force:true});
 
-        if (!deleteChannel) {
+        if (!channelDeleted) {
             setTheme(msg, theme, true);
             if (wasLobby) {
                 toggleLobby(msg);
-            }
-        } else {
-            try {
-                msg.channel.delete();
-            } catch(err) {
-                console.error(err);
             }
         }
     } catch (err) {
@@ -543,7 +537,7 @@ async function handleNew(msg, options) {
         }
         let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.\n'+
             'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
-        sendPngToDiscord(channel, canvas, messageComment);
+        sendPngToDiscord({ channel }, canvas, messageComment);
     }
 }
 
@@ -562,18 +556,6 @@ async function handleEnd(msg) {
         return renameChannel(msg, false);
     } else {
         return sendMessage(msg, 'There is no ongoing game in this channel.');
-    }
-}
-
-function handleDelete(msg) {
-    if (checkForOngoingGame(msg)) {
-        return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
-    } else {
-        if (isLobby(msg)) {
-            return sendMessage(msg, 'This is a public channel.');
-        } else {
-            return cleanupFiles(msg, true);
-        }
     }
 }
 
@@ -805,8 +787,6 @@ client.on('message', msg => {
                 return sendMessage(msg, themes.map(t => t.id).join('\n'));
             case 'end':
                 return handleEnd(msg);
-            case 'delete':
-                return handleDelete(msg);
             case 'lobby':
                 return handleLobby(msg);
             default:
@@ -826,6 +806,10 @@ client.on('message', msg => {
         if (!validPly(args[0])) return;
         return handleMove(msg, args[0]);
     }
+});
+
+client.on("channelDelete", function(channel){
+    return cleanupFiles({ channel }, true);
 });
 
 client.login(auth.token);
