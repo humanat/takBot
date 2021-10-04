@@ -180,7 +180,7 @@ function cleanupFiles(msg, channelDeleted=false) {
 
         if (!channelDeleted) {
             setTheme(msg, theme, true);
-            if (wasLobby) {
+            if (!wasLobby) {
                 toggleLobby(msg);
             }
         }
@@ -514,6 +514,7 @@ async function handleNew(msg, options) {
                         //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
                     // }]
                 });
+                toggleLobby({ channel });
                 await sendMessage(msg, `<#${channel.id}>`);
             } catch (err) {
                 console.error(err);
@@ -570,15 +571,15 @@ function handleLobby(msg) {
 }
 
 function isLobby(msg) {
-    return fs.existsSync(`data/${msg.channel.id}/meta/lobby`);
+    return !fs.existsSync(`data/${msg.channel.id}/meta/private`);
 }
 
 function toggleLobby(msg) {
     if (isLobby(msg)) {
-        return fs.unlinkSync(`data/${msg.channel.id}/meta/lobby`);
-    } else {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
-        return fs.writeFileSync(`data/${msg.channel.id}/meta/lobby`, '');
+        return fs.writeFileSync(`data/${msg.channel.id}/meta/private`, '');
+    } else {
+        return fs.unlinkSync(`data/${msg.channel.id}/meta/private`);
     }
 }
 
