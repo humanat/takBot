@@ -584,7 +584,7 @@ async function handleDelete(msg) {
         return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
         const gameData = await getGameData(msg);
-        if (!gameData) {
+        if (!gameData || !isGameChannel(msg.channel)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
         } else if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
