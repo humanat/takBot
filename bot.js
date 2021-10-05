@@ -18,7 +18,7 @@ const defaultTheme = 'discord';
 // Helper functions
 
 function validPly(cmd) {
-    return (cmd.match(/^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?(\*)?)?$/i)) ? true : false;
+    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+\*?)?)?['"?!]*$/i.test(cmd);
 }
 
 // Backward compatibility
@@ -586,7 +586,7 @@ async function handleDelete(msg) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
             try {
-                msg.channel.delete();
+                return msg.channel.delete();
             } catch (err) {
                 console.error(err);
                 return sendMessage(msg, 'I wasn\'t able to delete the channel.');
@@ -659,7 +659,16 @@ async function handleMove(msg, ply) {
         if (!msg.channel.name.includes('🆚')) {
             renameChannel(msg, true);
         }
-        await sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+        let message = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.';
+        if (ply.includes('\'')) {
+            message += '\n*Tak!*';
+        }
+        if (ply.includes('"')) {
+            message += '\n*' + gameData['player' + gameData.turnMarker];
+            message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
+            message += ' Tinuë.*';
+        }
+        await sendPngToDiscord(msg, canvas, message);
     } else {
         // Game is over
         const result = canvas.id;
