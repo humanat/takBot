@@ -18,7 +18,7 @@ const defaultTheme = 'discord';
 // Helper functions
 
 function validPly(cmd) {
-    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+\*?)?)?['"?!]*$/i.test(cmd);
+    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"?!]*$/i.test(cmd);
 }
 
 // Backward compatibility
