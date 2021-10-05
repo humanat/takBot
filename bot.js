@@ -274,13 +274,16 @@ function createPtnFile(gameData) {
     return gameId;
 }
 
-function deletePtnFile(gameId) {
+function deletePtnFile(gameData) {
+    if (!gameData || !gameData.gameId) {
+        return false;
+    }
     try {
-        fs.unlinkSync(`ptn/${gameId}.ptn`);
+        fs.unlinkSync(`ptn/${gameData.gameId}.ptn`);
     } catch (err) {
         console.error(err);
     }
-    return gameId;
+    return true;
 }
 
 function addPlyToPtnFile(gameId, ply) {
@@ -568,6 +571,7 @@ function renameChannel(msg, inProgress) {
 async function handleEnd(msg) {
     if (checkForOngoingGame(msg)) {
         cleanupFiles(msg);
+        deletePtnFile(await getGameData(msg));
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
         return renameChannel(msg, false);
     } else {
