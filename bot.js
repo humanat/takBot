@@ -516,7 +516,7 @@ async function handleNew(msg, options) {
         const gameId = createPtnFile(gameData);
         gameData.gameId = gameId;
 
-        let useNewChannel = Boolean(options.newChannel) || isLobby(msg);
+        let useNewChannel = Boolean(options.newChannel) || !isGameChannel(msg.channel);
 
         let channel = msg.channel;
         let channelName = `${gameData.player1}🆚${gameData.player2}`;
@@ -532,7 +532,6 @@ async function handleNew(msg, options) {
                         //     allow: [Permissions.FLAGS.VIEW_CHANNEL, Permissions.FLAGS.SEND_MESSAGES]
                     // }]
                 });
-                toggleLobby({ channel });
                 await sendMessage(msg, `<#${channel.id}>`);
             } catch (err) {
                 console.error(err);
@@ -551,6 +550,7 @@ async function handleNew(msg, options) {
         }
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
+        markAsGameChannel(channel);
         if (options.theme) {
             setTheme({ channel }, options.theme, true);
         }
@@ -599,27 +599,12 @@ async function handleDelete(msg) {
     }
 }
 
-function handleLobby(msg) {
-    if (isLobby(msg)) {
-        toggleLobby(msg);
-        return sendMessage(msg, 'You may now play games here.');
-    } else {
-        toggleLobby(msg);
-        return sendMessage(msg, 'Games are no longer allowed here.');
-    }
+function markAsGameChannel(channel) {
+    return fs.writeFileSync(`data/${channel.id}/meta/private`, '');
 }
 
-function isLobby(msg) {
-    return !fs.existsSync(`data/${msg.channel.id}/meta/private`);
-}
-
-function toggleLobby(msg) {
-    if (isLobby(msg)) {
-        fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
-        return fs.writeFileSync(`data/${msg.channel.id}/meta/private`, '');
-    } else {
-        return fs.unlinkSync(`data/${msg.channel.id}/meta/private`);
-    }
+function isGameChannel(channel) {
+    return fs.existsSync(`data/${channel.id}/meta/private`);
 }
 
 async function handleMove(msg, ply) {
@@ -875,8 +860,6 @@ client.on('message', msg => {
                 return handleEnd(msg);
             case 'delete':
                 return handleDelete(msg);
-            case 'lobby':
-                return handleLobby(msg);
             default:
                 args.shift();
                 let options = parser(args);

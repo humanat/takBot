@@ -35,6 +35,5 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 !tak theme                // Print the current theme
 !tak theme <theme ID>     // Set the current theme
 !tak theme <customTheme>  // Use theme code from PTN Ninja
-!tak lobby                // Toggle newChannel as default
 <while playing, any valid ply on its own line>
 ```
