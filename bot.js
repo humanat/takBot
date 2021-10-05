@@ -624,7 +624,7 @@ async function handleMove(msg, ply) {
     try {
         canvas = drawBoard(gameData, getTheme(msg), ply);
     } catch (err) {
-        if (!err.message.includes('Invalid')) {
+        if (!/^Invalid|stones remaining$/.test(err.message)) {
             console.error(err);
         }
         return sendMessage(msg, 'Invalid move.');
@@ -726,6 +726,10 @@ async function handleRematch(msg) {
     } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
+
+    // Generate new game ID
+    const gameId = createPtnFile(gameData);
+    gameData.gameId = gameId;
 
     // Swap players
     [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
