@@ -720,6 +720,41 @@ async function handleLink(msg, gameId) {
     }
 }
 
+async function handleRematch(msg) {
+    const gameData = await getGameData(msg);
+    if (!gameData) {
+        return sendMessage(msg, 'I couldn\'t find a previous game in this channel.');
+    } else if (gameData.tps) {
+        return sendMessage(msg, 'There\'s still a game in progress!');
+    } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+        return sendMessage(msg, 'Only the previous players can rematch.');
+    }
+
+    // Swap players
+    [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
+        [gameData.player2, gameData.player2ID, gameData.player1, gameData.player1ID];
+
+    let nextPlayer = gameData.player1Id;
+    if (gameData.initialTPS) {
+        let tpsParsed = parseTPS(gameData.initialTPS);
+        if (tpsParsed.player != 1) nextPlayer = gameData.player2Id;
+    }
+
+    msg.channel.setName(`${gameData.player1}🆚${gameData.player2}`);
+    let canvas;
+    try {
+        canvas = drawBoard({ ...gameData, tps: gameData.initialTPS || gameData.size }, getTheme(msg));
+    } catch (err) {
+        console.error(err);
+        return sendMessage(msg, 'Something went wrong when I tried to draw the board.');
+    }
+
+    saveGameData(msg, { tps: canvas.id, gameData });
+    let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.\n'+
+        'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
+    sendPngToDiscord(msg, canvas, messageComment);
+}
+
 function handleHistory(msg, page='1') {
     try {
         let historyData = getHistoryFromFile(parseInt(page));
@@ -815,6 +850,8 @@ client.on('message', msg => {
                 return handleUndo(msg);
             case 'link':
                 return handleLink(msg, args[1]);
+            case 'rematch':
+                return handleRematch(msg);
             case 'history':
                 return handleHistory(msg, args[1]);
             case 'theme':
