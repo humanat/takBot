@@ -430,7 +430,7 @@ async function sendMessage(msg, content) {
 
 async function deleteLastGameMessage(msg) {
     let messages = await getGameMessages(msg);
-    if (messages.array().length >= 0) {
+    if (messages.array().length > 0) {
         messages.first().delete();
     }
 }
@@ -649,13 +649,12 @@ async function handleMove(msg, ply) {
             renameChannel(msg, true);
         }
         let message = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.';
-        if (ply.includes('\'')) {
-            message += '\n*Tak!*';
-        }
-        if (ply.includes('"')) {
+        if (/''|"/.test(ply)) {
             message += '\n*' + gameData['player' + gameData.turnMarker];
             message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
             message += ' Tinuë.*';
+        } else if (/'/.test(ply)) {
+            message += '\n*Tak!*';
         }
         await sendPngToDiscord(msg, canvas, message);
     } else {
