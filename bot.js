@@ -519,7 +519,7 @@ async function handleNew(msg, options) {
         let useNewChannel = Boolean(options.newChannel) || !isGameChannel(msg.channel);
 
         let channel = msg.channel;
-        let channelName = `${gameData.player1}🆚${gameData.player2}`;
+        let channelName = `${gameData.player1}-🆚-${gameData.player2}`;
         if (useNewChannel) {
             try {
                 channel = await msg.guild.channels.create(channelName, {
@@ -563,8 +563,8 @@ async function handleNew(msg, options) {
 function renameChannel(msg, inProgress) {
     return msg.channel.setName(
         inProgress
-            ? msg.channel.name.replace('-vs-', '🆚')
-            : msg.channel.name.replace('🆚', '-vs-')
+            ? msg.channel.name.replace('-vs-', '-🆚-')
+            : msg.channel.name.replace('-🆚-', '-vs-')
     ).catch(err => console.error(err));
 }
 
@@ -741,7 +741,7 @@ async function handleRematch(msg) {
         if (tpsParsed.player != 1) nextPlayer = gameData.player2Id;
     }
 
-    msg.channel.setName(`${gameData.player1}🆚${gameData.player2}`);
+    msg.channel.setName(`${gameData.player1}-🆚-${gameData.player2}`);
     let canvas;
     try {
         canvas = drawBoard({ ...gameData, tps: gameData.initialTPS || gameData.size }, getTheme(msg));
