@@ -426,7 +426,6 @@ async function handleNew(msg, options) {
         }
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
-        markAsGameChannel(channel);
         if (options.theme) {
             setTheme({ channel }, options.theme, true);
         }
@@ -476,12 +475,8 @@ async function handleDelete(msg) {
     }
 }
 
-function markAsGameChannel(channel) {
-    return fs.writeFileSync(`data/${channel.id}/meta/private`, '');
-}
-
 function isGameChannel(channel) {
-    return fs.existsSync(`data/${channel.id}/meta/private`);
+    return fs.existsSync(`data/${channel.id}/meta/game.json`);
 }
 
 async function handleMove(msg, ply) {
