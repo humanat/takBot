@@ -590,6 +590,7 @@ async function handleDelete(msg) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
             try {
+                sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
                 return msg.channel.delete();
             } catch (err) {
                 console.error(err);
@@ -887,3 +888,7 @@ client.on('channelDelete', function(channel){
 });
 
 client.login(auth.token);
+
+process.on('unhandledRejection', error => {
+    console.error('Unhandled promise rejection:', error);
+});
