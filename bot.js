@@ -255,7 +255,7 @@ function createPtnFile(gameData) {
     }
 
     let gameId = Date.now() + crypto.randomBytes(2).toString('hex');
-    let filename = 'ptn/' + gameId + '.ptn';
+    let filename = `ptn/${gameId}.ptn`;
     let data = tagDateTime()
         + `[Site "https://github.com/humanat/takBot"]`
         + `[Player1 "${gameData.player1}"]`
@@ -327,7 +327,7 @@ function addToHistoryFile({gameId, player1, player2, komi, opening, result}) {
         fs.appendFileSync(historyFilename, resultString);
         // Update PTN
         let data = fs.readFileSync(ptnFilename, 'utf8');
-        let lastTag = data.indexOf("] ") + 1;
+        let lastTag = data.indexOf('] ') + 1;
         data = data.substr(0, lastTag)
             + tagDateTime()
             + `[Result "${result}"]`
@@ -396,7 +396,7 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     } catch (err) {
         console.error(err);
     }
-    let filename = 'images/' + msg.channel.id + '.png';
+    let filename = `images/${msg.channel.id}.png`;
     let out = fs.createWriteStream(filename);
     let stream = canvas.pngStream();
     stream.pipe(out);
@@ -418,7 +418,7 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
 
 async function sendMessage(msg, content) {
     try {
-        if (typeof content == "string" && content.length <= 2000) {
+        if (typeof content == 'string' && content.length <= 2000) {
             await msg.channel.send(content);
         } else {
             await msg.channel.send('I wanted to send a message but it was too long 😢');
@@ -430,7 +430,7 @@ async function sendMessage(msg, content) {
 
 async function deleteLastGameMessage(msg) {
     let messages = await getGameMessages(msg);
-    if (messages.array().length >= 0) {
+    if (messages.array().length > 0) {
         messages.first().delete();
     }
 }
@@ -460,7 +460,7 @@ async function handleNew(msg, options) {
         let size;
         if (options.tps) {
             // TPS
-            tps += " " + options._[0] + " " + options._[1];
+            tps += ` ${options._[0]} ${options._[1]}`;
             tpsParsed = parseTPS(tps);
             if (tpsParsed.error) {
                 return sendMessage(msg, tpsParsed.error);
@@ -624,7 +624,7 @@ async function handleMove(msg, ply) {
     try {
         canvas = drawBoard(gameData, getTheme(msg), ply);
     } catch (err) {
-        if (!err.message.includes('Invalid')) {
+        if (!/^Invalid|stones remaining$/.test(err.message)) {
             console.error(err);
         }
         return sendMessage(msg, 'Invalid move.');
@@ -649,13 +649,12 @@ async function handleMove(msg, ply) {
             renameChannel(msg, true);
         }
         let message = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.';
-        if (ply.includes('\'')) {
-            message += '\n*Tak!*';
-        }
-        if (ply.includes('"')) {
+        if (/''|"/.test(ply)) {
             message += '\n*' + gameData['player' + gameData.turnMarker];
             message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
             message += ' Tinuë.*';
+        } else if (/'/.test(ply)) {
+            message += '\n*Tak!*';
         }
         await sendPngToDiscord(msg, canvas, message);
     } else {
@@ -714,7 +713,7 @@ async function handleLink(msg, gameId) {
     if (!ptn) {
         return sendMessage(msg, 'I couldn\'t find a game with that ID.');
     } else {
-        return sendMessage(msg, '<https://ptn.ninja/' + compressToEncodedURIComponent(ptn) + '>');
+        return sendMessage(msg, `<https://ptn.ninja/${compressToEncodedURIComponent(ptn)}>`);
     }
 }
 
@@ -727,6 +726,10 @@ async function handleRematch(msg) {
     } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
+
+    // Generate new game ID
+    const gameId = createPtnFile(gameData);
+    gameData.gameId = gameId;
 
     // Swap players
     [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
@@ -879,7 +882,7 @@ client.on('message', msg => {
     }
 });
 
-client.on("channelDelete", function(channel){
+client.on('channelDelete', function(channel){
     return cleanupFiles({ channel }, true);
 });
 
