@@ -462,18 +462,20 @@ async function handleDelete(msg) {
     if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
-        const gameData = getGameData(msg);
-        if (!gameData || !isGameChannel(msg)) {
+        if (!isGameChannel(msg)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
-        } else if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
-            return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
-            try {
-                await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
-                return msg.channel.delete();
-            } catch (err) {
-                console.error(err);
-                return sendMessage(msg, 'I wasn\'t able to delete the channel.');
+            const gameData = getGameData(msg);
+            if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+                return sendMessage(msg, 'Only the previous players may delete the channel.');
+            } else {
+                try {
+                    await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
+                    return msg.channel.delete();
+                } catch (err) {
+                    console.error(err);
+                    return sendMessage(msg, 'I wasn\'t able to delete the channel.');
+                }
             }
         }
     }
