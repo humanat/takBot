@@ -469,7 +469,7 @@ async function handleDelete(msg) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
             try {
-                sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
+                await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
                 return msg.channel.delete();
             } catch (err) {
                 console.error(err);
@@ -647,18 +647,22 @@ function getTheme(msg) {
     return defaultTheme;
 }
 
-async function setTheme(msg, theme, silent = false) {
+async function setTheme(msg, theme, silent=false) {
     try {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
         fs.writeFileSync(`data/${msg.channel.id}/meta/theme`, theme);
         if (!silent) {
-            // Re-draw current board
-            const gameData = getGameData(msg);
-            await deleteLastGameMessage(msg);
-            let canvas = drawBoard(gameData, theme);
-            let nextPlayer = gameData.player1Id;
-            if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
-            return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+            if (!isGameOngoing(msg)) {
+                return sendMessage(msg, 'Theme set.');
+            } else {
+                // Re-create current board
+                const gameData = getGameData(msg);
+                await deleteLastGameMessage(msg);
+                let canvas = drawBoard(gameData, theme);
+                let nextPlayer = gameData.player1Id;
+                if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
+                return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+            }
         }
     } catch (err) {
         console.error(err);
@@ -666,7 +670,15 @@ async function setTheme(msg, theme, silent = false) {
 }
 
 function handleTheme(msg, theme) {
-    if (theme) {
+    if (!isGameChannel(msg)) {
+        return sendMessage(msg, 'This isn\'t a game channel.');
+    } else if (theme) {
+        const gameData = getGameData(msg);
+        const isOngoing = isGameOngoing(msg);
+        if (![gameData.player1Id, gameData.player2Id].includes(msg.author.id)) {
+            return sendMessage(msg, `Only the ${isOngoing ? 'current' : 'previous'} players may change the theme.`);
+        }
+
         try {
             parseTheme(theme);
         } catch(err) {
