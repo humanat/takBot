@@ -108,8 +108,12 @@ function deleteLastTurn(msg, gameData) {
     }
 }
 
-function checkForOngoingGame(msg) {
-    return Boolean(getLastFilename(msg));
+function isGameChannel(msg) {
+    return fs.existsSync(`data/${msg.channel.id}/meta/game.json`);
+}
+
+function isGameOngoing(msg) {
+    return fs.existsSync(`data/${msg.channel.id}/tps`);
 }
 
 function cleanupFiles(msg, channelDeleted=false) {
@@ -318,7 +322,7 @@ async function deleteLastGameMessage(msg) {
 async function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
         return sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
-    } else if (checkForOngoingGame(msg)) {
+    } else if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
     } else {
         let player1;
@@ -394,7 +398,7 @@ async function handleNew(msg, options) {
 
         let channel = msg.channel;
         let channelName = `${gameData.player1}-🆚-${gameData.player2}`;
-        if (!isGameChannel(msg.channel)) {
+        if (!isGameChannel(msg)) {
             // Make a new channel
             try {
                 channel = await msg.guild.channels.create(channelName, {
@@ -444,7 +448,7 @@ function renameChannel(msg, inProgress) {
 }
 
 async function handleEnd(msg) {
-    if (checkForOngoingGame(msg)) {
+    if (isGameOngoing(msg)) {
         cleanupFiles(msg);
         deletePtnFile(getGameData(msg));
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
@@ -455,11 +459,11 @@ async function handleEnd(msg) {
 }
 
 async function handleDelete(msg) {
-    if (checkForOngoingGame(msg)) {
+    if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
         const gameData = getGameData(msg);
-        if (!gameData || !isGameChannel(msg.channel)) {
+        if (!gameData || !isGameChannel(msg)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
         } else if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
@@ -473,10 +477,6 @@ async function handleDelete(msg) {
             }
         }
     }
-}
-
-function isGameChannel(channel) {
-    return fs.existsSync(`data/${channel.id}/meta/game.json`);
 }
 
 async function handleMove(msg, ply) {
