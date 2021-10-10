@@ -743,8 +743,8 @@ async function handleRematch(msg) {
     gameData.gameId = gameId;
 
     // Swap players
-    [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
-        [gameData.player2, gameData.player2ID, gameData.player1, gameData.player1ID];
+    [gameData.player1, gameData.player1Id, gameData.player2, gameData.player2Id] =
+        [gameData.player2, gameData.player2Id, gameData.player1, gameData.player1Id];
 
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
