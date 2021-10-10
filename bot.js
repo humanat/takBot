@@ -88,6 +88,10 @@ async function getGameData(msg) {
     }
 }
 
+function isPlayer(msg, gameData) {
+    return msg.author.id == gameData.player1Id || msg.author.id == gameData.player2Id;
+}
+
 function saveGameData(msg, { gameData, tps, ply }) {
     if (isOldVersion(msg)) {
         // Backward compatibility
@@ -588,7 +592,7 @@ async function handleDelete(msg) {
         const gameData = await getGameData(msg);
         if (!gameData || !isGameChannel(msg.channel)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
-        } else if(![gameData.player1Id, gameData.player2Id].includes(msg.author.id)) {
+        } else if(!isPlayer(msg, gameData)) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
             try {
@@ -614,7 +618,7 @@ async function handleMove(msg, ply) {
     let gameData = await getGameData(msg);
     if (!gameData) return;
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -687,7 +691,7 @@ async function handleUndo(msg) {
         return sendMessage(msg, 'You cannot undo a completed game.');
     }
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -726,7 +730,7 @@ async function handleRematch(msg) {
         return sendMessage(msg, 'I couldn\'t find a previous game in this channel.');
     } else if (gameData.tps) {
         return sendMessage(msg, 'There\'s still a game in progress!');
-    } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    } else if (!isPlayer(msg, gameData)) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
 
@@ -812,7 +816,7 @@ async function handleTheme(msg, theme) {
     } else if (theme) {
         const gameData = await getGameData(msg);
         const isOngoing = checkForOngoingGame(msg);
-        if (![gameData.player1Id, gameData.player2Id].includes(msg.author.id)) {
+        if (!isPlayer(msg, gameData)) {
             return sendMessage(msg, `Only the ${isOngoing ? 'current' : 'previous'} players may change the theme.`);
         }
 
