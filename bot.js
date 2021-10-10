@@ -53,6 +53,10 @@ function getGameData(msg) {
     }
 }
 
+function isPlayer(msg, gameData) {
+    return msg.author.id == gameData.player1Id || msg.author.id == gameData.player2Id;
+}
+
 function saveGameData(msg, { gameData, tps, ply }) {
     const channelDir = `data/${msg.channel.id}/`;
     const metaDir = channelDir + 'meta/';
@@ -468,7 +472,7 @@ async function handleDelete(msg) {
             return sendMessage(msg, 'I can\'t delete this channel.');
         } else {
             const gameData = getGameData(msg);
-            if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+            if(!isPlayer(msg, gameData)) {
                 return sendMessage(msg, 'Only the previous players may delete the channel.');
             } else {
                 try {
@@ -487,7 +491,7 @@ async function handleMove(msg, ply) {
     let gameData = getGameData(msg);
     if (!gameData) return;
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -552,10 +556,14 @@ async function handleMove(msg, ply) {
 async function handleUndo(msg) {
     let gameData = getGameData(msg);
     if (!gameData) {
-        return sendMessage(msg, 'You cannot undo a completed game.');
+        return sendMessage(msg, 'This isn\'t a game channel.');
     }
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!isGameOngoing(msg)) {
+        return sendMessage(msg, 'The game is over, but you start a new game from a previous position!');
+    }
+
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -594,7 +602,7 @@ async function handleRematch(msg) {
         return sendMessage(msg, 'I couldn\'t find a previous game in this channel.');
     } else if (gameData.tps) {
         return sendMessage(msg, 'There\'s still a game in progress!');
-    } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    } else if (!isPlayer(msg, gameData)) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
 
@@ -603,8 +611,8 @@ async function handleRematch(msg) {
     gameData.gameId = gameId;
 
     // Swap players
-    [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
-        [gameData.player2, gameData.player2ID, gameData.player1, gameData.player1ID];
+    [gameData.player1, gameData.player1Id, gameData.player2, gameData.player2Id] =
+        [gameData.player2, gameData.player2Id, gameData.player1, gameData.player1Id];
 
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
@@ -679,7 +687,7 @@ function handleTheme(msg, theme) {
     } else if (theme) {
         const gameData = getGameData(msg);
         const isOngoing = isGameOngoing(msg);
-        if (![gameData.player1Id, gameData.player2Id].includes(msg.author.id)) {
+        if (!isPlayer(msg, gameData)) {
             return sendMessage(msg, `Only the ${isOngoing ? 'current' : 'previous'} players may change the theme.`);
         }
 
