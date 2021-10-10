@@ -688,7 +688,11 @@ async function handleMove(msg, ply) {
 async function handleUndo(msg) {
     let gameData = await getGameData(msg);
     if (!gameData) {
-        return sendMessage(msg, 'You cannot undo a completed game.');
+        return sendMessage(msg, 'This isn\'t a game channel.');
+    }
+
+    if (!checkForOngoingGame(msg)) {
+        return sendMessage(msg, 'The game is over, but you start a new game from a previous position!');
     }
 
     if (!isPlayer(msg, gameData)) {
