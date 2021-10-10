@@ -617,7 +617,12 @@ async function handleRematch(msg) {
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
         let tpsParsed = parseTPS(gameData.initialTPS);
-        if (tpsParsed.player != 1) nextPlayer = gameData.player2Id;
+        if (tpsParsed.linenum > 10) {
+            // Start from beginning if last game started after move 10
+            gameData.initialTPS = false;
+        } else if (tpsParsed.player != 1) {
+            nextPlayer = gameData.player2Id;
+        }
     }
 
     msg.channel.setName(`${gameData.player1}-🆚-${gameData.player2}`);
