@@ -329,7 +329,7 @@ async function handleNew(msg, options) {
     } else if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
     } else if (client.user.id === msg.mentions.users.first().id) {
-        return sendMessage(msg, 'Sorry, I don\'t know how to play yet, I just facilitate games. Challenge someone else!');
+        return sendMessage(msg, 'Sorry, I don\'t know how to play yet. I just facilitate games. Challenge someone else!');
     } else {
         let player1;
         let player2;
