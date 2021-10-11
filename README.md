@@ -9,7 +9,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `white` *(optional, boolean):* Seats the message author as Player 1.
   - `random` *(optional, boolean):* Seats the message author randomly as Player 1 or 2.
 
-**Stand alone commands**
+**Standalone commands**
   - `rematch` to swap seats and play again using the same game settings.
   - `themes` to see a list of themes for the board and pieces.
   - `theme` to set the theme for the current game.
