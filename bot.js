@@ -88,6 +88,10 @@ async function getGameData(msg) {
     }
 }
 
+function isPlayer(msg, gameData) {
+    return msg.author.id == gameData.player1Id || msg.author.id == gameData.player2Id;
+}
+
 function saveGameData(msg, { gameData, tps, ply }) {
     if (isOldVersion(msg)) {
         // Backward compatibility
@@ -444,6 +448,8 @@ async function handleNew(msg, options) {
         return sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
     } else if (checkForOngoingGame(msg)) {
         return sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
+    } else if (client.user.id === msg.mentions.users.first().id) {
+        return sendMessage(msg, 'Sorry, I don\'t know how to play yet, I just facilitate games. Challenge someone else!');
     } else {
         let player1;
         let player2;
@@ -586,11 +592,11 @@ async function handleDelete(msg) {
         const gameData = await getGameData(msg);
         if (!gameData || !isGameChannel(msg.channel)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
-        } else if(msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+        } else if(!isPlayer(msg, gameData)) {
             return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
             try {
-                sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
+                await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
                 return msg.channel.delete();
             } catch (err) {
                 console.error(err);
@@ -612,7 +618,7 @@ async function handleMove(msg, ply) {
     let gameData = await getGameData(msg);
     if (!gameData) return;
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -682,10 +688,14 @@ async function handleMove(msg, ply) {
 async function handleUndo(msg) {
     let gameData = await getGameData(msg);
     if (!gameData) {
-        return sendMessage(msg, 'You cannot undo a completed game.');
+        return sendMessage(msg, 'This isn\'t a game channel.');
     }
 
-    if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    if (!checkForOngoingGame(msg)) {
+        return sendMessage(msg, 'The game is over, but you can start a new game using the --tps flag!');
+    }
+
+    if (!isPlayer(msg, gameData)) {
         return;
     }
 
@@ -724,7 +734,7 @@ async function handleRematch(msg) {
         return sendMessage(msg, 'I couldn\'t find a previous game in this channel.');
     } else if (gameData.tps) {
         return sendMessage(msg, 'There\'s still a game in progress!');
-    } else if (msg.author.id != gameData.player1Id && msg.author.id != gameData.player2Id) {
+    } else if (!isPlayer(msg, gameData)) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
 
@@ -733,13 +743,15 @@ async function handleRematch(msg) {
     gameData.gameId = gameId;
 
     // Swap players
-    [gameData.player1, gameData.player1ID, gameData.player2, gameData.player2ID] =
-        [gameData.player2, gameData.player2ID, gameData.player1, gameData.player1ID];
+    [gameData.player1, gameData.player1Id, gameData.player2, gameData.player2Id] =
+        [gameData.player2, gameData.player2Id, gameData.player1, gameData.player1Id];
 
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
         let tpsParsed = parseTPS(gameData.initialTPS);
-        if (tpsParsed.player != 1) nextPlayer = gameData.player2Id;
+        if (tpsParsed.player != 1) {
+            nextPlayer = gameData.player2Id;
+        }
     }
 
     msg.channel.setName(`${gameData.player1}-🆚-${gameData.player2}`);
@@ -781,20 +793,19 @@ function getTheme(msg) {
     return defaultTheme;
 }
 
-async function setTheme(msg, theme, silent = false) {
+async function setTheme(msg, theme, silent=false) {
     try {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
         fs.writeFileSync(`data/${msg.channel.id}/meta/theme`, theme);
         if (!silent) {
-            if (isOldVersion(msg)) {
+            if (isOldVersion(msg) || !checkForOngoingGame(msg)) {
                 // Backward compatibility
                 return sendMessage(msg, 'Theme set.');
             } else {
                 // Re-create current board
                 const gameData = await getGameData(msg);
                 await deleteLastGameMessage(msg);
-                let canvas;
-                canvas = drawBoard(gameData, theme);
+                let canvas = drawBoard(gameData, theme);
                 let nextPlayer = gameData.player1Id;
                 if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
                 return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
@@ -805,8 +816,16 @@ async function setTheme(msg, theme, silent = false) {
     }
 }
 
-function handleTheme(msg, theme) {
-    if (theme) {
+async function handleTheme(msg, theme) {
+    if (!isGameChannel(msg.channel)) {
+        return sendMessage(msg, 'This isn\'t a game channel.');
+    } else if (theme) {
+        const gameData = await getGameData(msg);
+        const isOngoing = checkForOngoingGame(msg);
+        if (!isPlayer(msg, gameData)) {
+            return sendMessage(msg, `Only the ${isOngoing ? 'current' : 'previous'} players may change the theme.`);
+        }
+
         try {
             parseTheme(theme);
         } catch(err) {
