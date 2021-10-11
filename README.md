@@ -19,6 +19,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `link` to get a link for the current game in ptn.ninja.
   - `end` to end the current game.
   - `delete` to delete the current game channel and clean up.
+  - `help` to see this message.
 
 **Note:**
   - By default, the player you challenge is **Player 1**.
@@ -28,22 +29,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - Play Tak: <https://ustak.org/play-beautiful-game-tak/>
   - Learn PTN: <https://ustak.org/portable-tak-notation/>
 
-**Example commands:**
+**Example game start:**
 ```
-!tak help                 // This message
-!tak @opponent            // Challenge @opponent to 6x6 game
 !tak @opponent --size 5 --komi 1 --opening no-swap --random
-!tak undo                 // Undo the previous turn
-!tak rematch              // Play again with players swapped
-!tak end                  // End the current game
-!tak delete               // Delete the current game channel
-!tak link                 // PTN Ninja link for current game
-!tak link <game ID>       // PTN Ninja link for finished game
-!tak history              // List finished games
-!tak history <pageNumber>
-!tak themes               // List themes
-!tak theme                // Print the current theme
-!tak theme <theme ID>     // Set the current theme
-!tak theme <customTheme>  // Use theme code from PTN Ninja
-<while playing, any valid ply on its own line>
 ```
