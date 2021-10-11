@@ -560,7 +560,7 @@ async function handleUndo(msg) {
     }
 
     if (!isGameOngoing(msg)) {
-        return sendMessage(msg, 'The game is over, but you start a new game from a previous position!');
+        return sendMessage(msg, 'The game is over, but you can start a new game using the --tps flag!');
     }
 
     if (!isPlayer(msg, gameData)) {
@@ -617,10 +617,7 @@ async function handleRematch(msg) {
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
         let tpsParsed = parseTPS(gameData.initialTPS);
-        if (tpsParsed.linenum > 10) {
-            // Start from beginning if last game started after move 10
-            gameData.initialTPS = false;
-        } else if (tpsParsed.player != 1) {
+        if (tpsParsed.player != 1) {
             nextPlayer = gameData.player2Id;
         }
     }
