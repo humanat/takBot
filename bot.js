@@ -606,13 +606,13 @@ async function handleRematch(msg) {
         return sendMessage(msg, 'Only the previous players can rematch.');
     }
 
-    // Generate new game ID
-    const gameId = createPtnFile(gameData);
-    gameData.gameId = gameId;
-
     // Swap players
     [gameData.player1, gameData.player1Id, gameData.player2, gameData.player2Id] =
         [gameData.player2, gameData.player2Id, gameData.player1, gameData.player1Id];
+
+    // Generate new game ID
+    const gameId = createPtnFile(gameData);
+    gameData.gameId = gameId;
 
     let nextPlayer = gameData.player1Id;
     if (gameData.initialTPS) {
