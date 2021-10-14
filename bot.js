@@ -487,6 +487,8 @@ async function handleDelete(msg) {
 }
 
 async function handleMove(msg, ply) {
+    if (!isGameOngoing(msg)) return;
+
     let gameData = getGameData(msg);
     if (!gameData) return;
 
