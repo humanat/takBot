@@ -1,6 +1,5 @@
 const Discord = require('discord.js');
 const fs = require('fs');
-const lzutf8 = require('lzutf8');
 const crypto = require('crypto');
 const auth = require('./auth.json');
 const parser = require('minimist');
