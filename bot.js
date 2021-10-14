@@ -436,7 +436,7 @@ async function handleNew(msg, options) {
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
         if (options.theme) {
-            setTheme({ channel }, options.theme, true);
+            setTheme({ channel }, options.theme);
         }
         let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.\n'+
             'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
@@ -660,29 +660,19 @@ function getTheme(msg) {
     return defaultTheme;
 }
 
-async function setTheme(msg, theme, silent=false) {
+function setTheme(msg, theme) {
     try {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
         fs.writeFileSync(`data/${msg.channel.id}/meta/theme`, theme);
-        if (!silent) {
-            if (!isGameOngoing(msg)) {
-                return sendMessage(msg, 'Theme set.');
-            } else {
-                // Re-create current board
-                const gameData = getGameData(msg);
-                await deleteLastGameMessage(msg);
-                let canvas = drawBoard(gameData, theme);
-                let nextPlayer = gameData.player1Id;
-                if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
-                return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
-            }
-        }
+        return true;
     } catch (err) {
+        sendMessage(msg, 'Something went wrong when I tried to save the theme.');
         console.error(err);
+        return false;
     }
 }
 
-function handleTheme(msg, theme) {
+async function handleTheme(msg, theme) {
     if (!isGameChannel(msg)) {
         return sendMessage(msg, 'This isn\'t a game channel.');
     } else if (theme) {
@@ -697,7 +687,18 @@ function handleTheme(msg, theme) {
         } catch(err) {
             return sendMessage(msg, 'Invalid theme');
         }
-        setTheme(msg, theme);
+        if (setTheme(msg, theme)) {
+            if (!isGameOngoing(msg)) {
+                return sendMessage(msg, 'Theme set.');
+            } else {
+                // Re-create current board
+                const gameData = getGameData(msg);
+                await deleteLastGameMessage(msg);
+                const canvas = drawBoard(gameData, theme);
+                const nextPlayer = gameData[`player${gameData.turnMarker}Id`];
+                return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
+            }
+        }
     } else {
         theme = getTheme(msg);
 
