@@ -577,7 +577,10 @@ async function handleUndo(msg) {
 
     await deleteLastGameMessage(msg);
     deleteLastTurn(msg, gameData);
-    return sendMessage(msg, 'Undo complete.');
+    gameData = getGameData(msg);
+    const canvas = drawBoard(gameData, getTheme(msg));
+    const nextPlayer = gameData[`player${gameData.turnMarker}Id`];
+    return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
 }
 
 async function handleLink(msg, gameId) {
