@@ -21,70 +21,35 @@ function validPly(cmd) {
     return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"?!]*$/i.test(cmd);
 }
 
-// Backward compatibility
-function isOldVersion(msg) {
-    const channelDir = `data/${msg.channel.id}/`;
-    return fs.existsSync(channelDir)
-        && fs.readdirSync(channelDir).some(file => file.endsWith('.data'));
-}
-
 function getLastFilename(msg) {
-    let dirname = `data/${msg.channel.id}/`;
+    let dirname = `data/${msg.channel.id}/tps/`;
     if (!fs.existsSync(dirname)) {
         return false;
     }
-    if (isOldVersion(msg)) {
-        // Backward compatibility
-        let files = fs.readdirSync(dirname).filter(file => file.endsWith('.data'));
-        files.sort();
-        return files && files.length ? dirname + files[files.length-1] : false;
-    } else {
-        dirname += 'tps/';
-        if (!fs.existsSync(dirname)) {
-            return false;
-        }
-        let files = fs.readdirSync(dirname);
-        files.sort();
-        return files && files.length ? dirname + files[files.length-1] : false;
-    }
+    let files = fs.readdirSync(dirname);
+    files.sort();
+    return files && files.length ? dirname + files[files.length-1] : false;
 }
 
-// Backward compatibility
-function getEncodedHashFromFile(msg) {
-    const dirname = `data/${msg.channel.id}/`;
+function getGameData(msg) {
+    const channelDir = `data/${msg.channel.id}/`;
+    const metaDir = channelDir + 'meta/';
+    const tpsDir = channelDir + 'tps/';
+
     try {
-        return fs.readFileSync(getLastFilename(msg), 'utf8');
+        // Get meta info
+        let data = JSON.parse(fs.readFileSync(metaDir + 'game.json', 'utf8'));
+
+        // Get the latest board state
+        if (fs.existsSync(tpsDir)) {
+            let filename = getLastFilename(msg);
+            [data.tps, data.hl] = fs.readFileSync(filename, 'utf8').split('\n');
+            let parsedTPS = parseTPS(data.tps);
+            data.turnMarker = String(parsedTPS.player);
+        }
+        return data;
     } catch (err) {
         // On error we assume that the file doesn't exist
-    }
-}
-
-async function getGameData(msg) {
-    let dirname = 'data/' + msg.channel.id;
-    let data;
-    if (isOldVersion(msg)) {
-        // Backward compatibility
-        data = getDataFromEncodedHash(getEncodedHashFromFile(msg));
-        data.player1Id = data.player1;
-        data.player2Id = data.player2;
-        Object.assign(data, await fetchPlayerNames(data));
-        return data;
-    } else {
-        try {
-            // Get meta info
-            data = JSON.parse(fs.readFileSync(dirname + '/meta/game.json', 'utf8'));
-
-            // Get the latest board state
-            if (fs.existsSync(dirname + '/tps')) {
-                let filename = getLastFilename(msg);
-                [data.tps, data.hl] = fs.readFileSync(filename, 'utf8').split('\n');
-                let parsedTPS = parseTPS(data.tps);
-                data.turnMarker = String(parsedTPS.player);
-            }
-            return data;
-        } catch (err) {
-            // On error we assume that the file doesn't exist
-        }
     }
 }
 
@@ -93,45 +58,33 @@ function isPlayer(msg, gameData) {
 }
 
 function saveGameData(msg, { gameData, tps, ply }) {
-    if (isOldVersion(msg)) {
-        // Backward compatibility
-        let encodedHash = encodeHashFromData({
-            'player1': gameData.player1Id,
-            'player2': gameData.player2Id,
-            'tps': tps,
-            'komi': gameData.komi,
-            'gameId': gameData.gameId,
-            'opening': gameData.opening
-        });
-        saveEncodedHashToFile(msg, encodedHash);
-    } else {
-        const channelDir = `data/${msg.channel.id}/`;
-        // Meta data
-        if (gameData) {
-            const metaDir = channelDir + 'meta/';
-            try {
-                fs.mkdirSync(metaDir, {recursive:true});
-                fs.writeFileSync(metaDir + 'game.json', JSON.stringify(gameData));
-            } catch (err) {
-                console.error(err);
-            }
-        }
+    const channelDir = `data/${msg.channel.id}/`;
+    const metaDir = channelDir + 'meta/';
+    const tpsDir = channelDir + 'tps/';
 
-        // Board state
-        const tpsDir = channelDir + 'tps/';
-        let filename = Date.now() + crypto.randomBytes(2).toString('hex');
-        while (filename.length < 19) {
-            filename = '0' + filename;
-        }
-        if (ply) {
-            tps += '\n' + ply;
-        }
+    // Meta data
+    if (gameData) {
         try {
-            fs.mkdirSync(tpsDir, {recursive:true});
-            fs.writeFileSync(tpsDir + filename + '.tps', tps);
+            fs.mkdirSync(metaDir, {recursive:true});
+            fs.writeFileSync(metaDir + 'game.json', JSON.stringify(gameData));
         } catch (err) {
             console.error(err);
         }
+    }
+
+    // Board state
+    let filename = Date.now() + crypto.randomBytes(2).toString('hex');
+    while (filename.length < 19) {
+        filename = '0' + filename;
+    }
+    if (ply) {
+        tps += '\n' + ply;
+    }
+    try {
+        fs.mkdirSync(tpsDir, {recursive:true});
+        fs.writeFileSync(tpsDir + filename + '.tps', tps);
+    } catch (err) {
+        console.error(err);
     }
 }
 
@@ -148,28 +101,6 @@ function drawBoard(gameData, theme, ply) {
     return TPStoCanvas(options);
 }
 
-// Backward compatibility
-function saveEncodedHashToFile(msg, encodedHash) {
-    let dirname = 'data/' + msg.channel.id;
-    try {
-        fs.mkdirSync(dirname, {recursive:true});
-    } catch (err) {
-        console.error(err);
-    }
-    let filename = Date.now() + crypto.randomBytes(2).toString('hex');
-    if (20 - filename.length > 0) {
-        for (let i = 0; i < 20-filename.length; i++) {
-            filename = '0' + filename;
-        }
-    }
-    filename = 'data/' + msg.channel.id + '/' + filename + '.data';
-    try {
-        fs.writeFileSync(filename, encodedHash);
-    } catch (err) {
-        console.error(err);
-    }
-}
-
 function deleteLastTurn(msg, gameData) {
     try {
         fs.unlinkSync(getLastFilename(msg));
@@ -181,8 +112,12 @@ function deleteLastTurn(msg, gameData) {
     }
 }
 
-function checkForOngoingGame(msg) {
-    return Boolean(getLastFilename(msg));
+function isGameChannel(msg) {
+    return fs.existsSync(`data/${msg.channel.id}/meta/game.json`);
+}
+
+function isGameOngoing(msg) {
+    return fs.existsSync(`data/${msg.channel.id}/tps`);
 }
 
 function cleanupFiles(msg, channelDeleted=false) {
@@ -193,12 +128,6 @@ function cleanupFiles(msg, channelDeleted=false) {
         } else {
             if (!fs.existsSync(dirname)) {
                 return false;
-            } else if (isOldVersion(msg)) {
-                // Backward compatibility
-                let files = fs.readdirSync(dirname);
-                files.forEach(file => {
-                    if (file.endsWith('.data')) fs.unlinkSync(dirname + file);
-                });
             } else {
                 return fs.rmdirSync(dirname + 'tps', {recursive:true, force:true});
             }
@@ -206,38 +135,6 @@ function cleanupFiles(msg, channelDeleted=false) {
     } catch (err) {
         console.error(err);
     }
-}
-
-// Backward compatibility
-function getDataFromEncodedHash(encodedHash) {
-    let gameHash = lzutf8.decompress(decodeURI(encodedHash.replace(/_/g, '/')), {'inputEncoding': 'Base64'}).split('___');
-    let playersString = gameHash[0];
-    let players = playersString.split('_');
-    let tps = gameHash[1] || '';
-    let turnMarker = tps.split('__')[1];
-    tps = tps.replace(/__/g, ' ').replace(/_/g, ',').replace(/-/g, '/');
-    let komi = gameHash[2] || 0;
-    let gameId = gameHash[3] || 0;
-    let opening = gameHash[4] || 'swap';
-    return {
-        'player1': players[0],
-        'player2': players[1],
-        'tps': tps,
-        'turnMarker': turnMarker,
-        'komi': komi,
-        'gameId': gameId,
-        'opening': opening
-    };
-}
-
-// Backward compatibility
-function encodeHashFromData(gameData) {
-    let gameHash = gameData.player1 + '_' + gameData.player2
-            + '___' + gameData.tps.replace(/\//g, '-').replace(/,/g, '_').replace(/ /g, '__')
-            + '___' + gameData.komi
-            + '___' + gameData.gameId
-            + '___' + gameData.opening
-    return encodeURI(lzutf8.compress(gameHash, {'outputEncoding': 'Base64'})).replace(/\//g, '_');
 }
 
 function tagDateTime() {
@@ -373,23 +270,6 @@ async function getGameMessages(msg) {
     return messages.filter(m => m.author.id === client.user.id).filter(m => m.attachments.array().length);
 }
 
-async function fetchPlayerNames(gameData) {
-    const result = {};
-    try {
-        await Promise.all([
-            client.users.fetch(gameData.player1).then(
-                (player1) => { result.player1 = player1.username; }
-            ),
-            client.users.fetch(gameData.player2).then(
-                (player2) => { result.player2 = player2.username; }
-            )
-        ]);
-    } catch (err) {
-        console.error(err);
-    }
-    return result;
-}
-
 
 
 // Functions to send to Discord
@@ -446,7 +326,7 @@ async function deleteLastGameMessage(msg) {
 async function handleNew(msg, options) {
     if (msg.mentions.users.array().length != 1) {
         return sendMessage(msg, 'I didn\'t understand. See `!tak help` for example commands.');
-    } else if (checkForOngoingGame(msg)) {
+    } else if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There\'s a game in progress! Use `!tak end` if you\'re sure no one is using this channel.');
     } else if (client.user.id === msg.mentions.users.first().id) {
         return sendMessage(msg, 'Sorry, I don\'t know how to play yet. I just facilitate games. Challenge someone else!');
@@ -522,11 +402,10 @@ async function handleNew(msg, options) {
         const gameId = createPtnFile(gameData);
         gameData.gameId = gameId;
 
-        let useNewChannel = Boolean(options.newChannel) || !isGameChannel(msg.channel);
-
         let channel = msg.channel;
         let channelName = `${gameData.player1}-🆚-${gameData.player2}`;
-        if (useNewChannel) {
+        if (!isGameChannel(msg)) {
+            // Make a new channel
             try {
                 channel = await msg.guild.channels.create(channelName, {
                     parent: msg.channel.parent,
@@ -544,6 +423,7 @@ async function handleNew(msg, options) {
                 return sendMessage(msg, 'I wasn\'t able to create a new channel.');
             }
         } else {
+            // Use existing channel
             msg.channel.setName(channelName);
         }
 
@@ -556,7 +436,6 @@ async function handleNew(msg, options) {
         }
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
-        markAsGameChannel(channel);
         if (options.theme) {
             setTheme({ channel }, options.theme, true);
         }
@@ -575,9 +454,9 @@ function renameChannel(msg, inProgress) {
 }
 
 async function handleEnd(msg) {
-    if (checkForOngoingGame(msg)) {
+    if (isGameOngoing(msg)) {
         cleanupFiles(msg);
-        deletePtnFile(await getGameData(msg));
+        deletePtnFile(getGameData(msg));
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
         return renameChannel(msg, false);
     } else {
@@ -586,36 +465,30 @@ async function handleEnd(msg) {
 }
 
 async function handleDelete(msg) {
-    if (checkForOngoingGame(msg)) {
+    if (isGameOngoing(msg)) {
         return sendMessage(msg, 'There is an ongoing game in this channel! If you\'re sure you about this, please say `!tak end` and try again.');
     } else {
-        const gameData = await getGameData(msg);
-        if (!gameData || !isGameChannel(msg.channel)) {
+        if (!isGameChannel(msg)) {
             return sendMessage(msg, 'I can\'t delete this channel.');
-        } else if(!isPlayer(msg, gameData)) {
-            return sendMessage(msg, 'Only the previous players may delete the channel.');
         } else {
-            try {
-                await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
-                return msg.channel.delete();
-            } catch (err) {
-                console.error(err);
-                return sendMessage(msg, 'I wasn\'t able to delete the channel.');
+            const gameData = getGameData(msg);
+            if(!isPlayer(msg, gameData)) {
+                return sendMessage(msg, 'Only the previous players may delete the channel.');
+            } else {
+                try {
+                    await sendMessage(msg, 'Deleting channel. Please be patient, as this sometimes takes a while.');
+                    return msg.channel.delete();
+                } catch (err) {
+                    console.error(err);
+                    return sendMessage(msg, 'I wasn\'t able to delete the channel.');
+                }
             }
         }
     }
 }
 
-function markAsGameChannel(channel) {
-    return fs.writeFileSync(`data/${channel.id}/meta/private`, '');
-}
-
-function isGameChannel(channel) {
-    return fs.existsSync(`data/${channel.id}/meta/private`);
-}
-
 async function handleMove(msg, ply) {
-    let gameData = await getGameData(msg);
+    let gameData = getGameData(msg);
     if (!gameData) return;
 
     if (!isPlayer(msg, gameData)) {
@@ -646,12 +519,7 @@ async function handleMove(msg, ply) {
 
     if (!canvas.isGameEnd) {
         // Game is still in progress
-        if (isOldVersion(msg)) {
-            // Backward compatibility
-            saveGameData(msg, { tps: canvas.id, gameData });
-        } else {
-            saveGameData(msg, { tps: canvas.id, ply });
-        }
+        saveGameData(msg, { tps: canvas.id, ply });
         if (!msg.channel.name.includes('🆚')) {
             renameChannel(msg, true);
         }
@@ -686,12 +554,12 @@ async function handleMove(msg, ply) {
 }
 
 async function handleUndo(msg) {
-    let gameData = await getGameData(msg);
+    let gameData = getGameData(msg);
     if (!gameData) {
         return sendMessage(msg, 'This isn\'t a game channel.');
     }
 
-    if (!checkForOngoingGame(msg)) {
+    if (!isGameOngoing(msg)) {
         return sendMessage(msg, 'The game is over, but you can start a new game using the --tps flag!');
     }
 
@@ -713,7 +581,7 @@ async function handleUndo(msg) {
 
 async function handleLink(msg, gameId) {
     if (!gameId) {
-        let gameData = await getGameData(msg);
+        let gameData = getGameData(msg);
         if (!gameData) {
             return sendMessage(msg, 'You must use the game ID to get a link for a completed game. See `!tak history` to get the game ID.');
         }
@@ -729,7 +597,7 @@ async function handleLink(msg, gameId) {
 }
 
 async function handleRematch(msg) {
-    const gameData = await getGameData(msg);
+    const gameData = getGameData(msg);
     if (!gameData) {
         return sendMessage(msg, 'I couldn\'t find a previous game in this channel.');
     } else if (gameData.tps) {
@@ -798,12 +666,11 @@ async function setTheme(msg, theme, silent=false) {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
         fs.writeFileSync(`data/${msg.channel.id}/meta/theme`, theme);
         if (!silent) {
-            if (isOldVersion(msg) || !checkForOngoingGame(msg)) {
-                // Backward compatibility
+            if (!isGameOngoing(msg)) {
                 return sendMessage(msg, 'Theme set.');
             } else {
                 // Re-create current board
-                const gameData = await getGameData(msg);
+                const gameData = getGameData(msg);
                 await deleteLastGameMessage(msg);
                 let canvas = drawBoard(gameData, theme);
                 let nextPlayer = gameData.player1Id;
@@ -816,12 +683,12 @@ async function setTheme(msg, theme, silent=false) {
     }
 }
 
-async function handleTheme(msg, theme) {
-    if (!isGameChannel(msg.channel)) {
+function handleTheme(msg, theme) {
+    if (!isGameChannel(msg)) {
         return sendMessage(msg, 'This isn\'t a game channel.');
     } else if (theme) {
-        const gameData = await getGameData(msg);
-        const isOngoing = checkForOngoingGame(msg);
+        const gameData = getGameData(msg);
+        const isOngoing = isGameOngoing(msg);
         if (!isPlayer(msg, gameData)) {
             return sendMessage(msg, `Only the ${isOngoing ? 'current' : 'previous'} players may change the theme.`);
         }

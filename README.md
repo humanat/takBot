@@ -8,7 +8,6 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `opening` *(optional, default `swap`):* Specify an opening variation. Valid values are `swap` and `no-swap`.
   - `white` *(optional, boolean):* Seats the message author as Player 1.
   - `random` *(optional, boolean):* Seats the message author randomly as Player 1 or 2.
-  - `newChannel` *(optional, boolean, default `true`):* Creates a new channel for the game.
 
 **Standalone commands**
   - `rematch` to swap seats and play again using the same game settings.
@@ -23,7 +22,6 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 
 **Note:**
   - By default, the player you challenge is **Player 1**.
-  - If you want to run multiple games at once, please make a new channel with `--newChannel`.
 
 **How to:**
   - Play Tak: <https://ustak.org/play-beautiful-game-tak/>
