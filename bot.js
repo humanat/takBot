@@ -8,6 +8,7 @@ const {themes} = require('./TPS-Ninja/src/themes');
 const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 const {Permissions} = require('discord.js');
+const timestring = require('timestring');
 
 const client = new Discord.Client();
 const defaultTheme = 'discord';
@@ -735,6 +736,17 @@ function handleRandom(msg, arg) {
     return sendMessage(msg, ''+rand);
 }
 
+function handleReminder(msg, arg) {
+    try {
+        let time = timestring(arg);
+        let msUntilReminder = time*1000;
+        sendMessage(msg, 'OK, I will ping you in this channel after ' + time + ' seconds.');
+        setTimeout(sendMessage, msUntilReminder, msg, 'Hey <@'+msg.author.id+'>, you wanted me to remind you about this channel.');
+    } catch(err) {
+        sendMessage(msg, 'I did not understand how long you wanted me to wait before reminding you.');
+    }
+}
+
 
 
 // Main code
@@ -768,6 +780,8 @@ client.on('message', msg => {
                 return handleEnd(msg);
             case 'delete':
                 return handleDelete(msg);
+            case 'reminder':
+                return handleReminder(msg, args[1]);
             default:
                 args.shift();
                 let options = parser(args);
