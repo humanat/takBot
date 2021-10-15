@@ -100,6 +100,24 @@ function drawBoard(gameData, theme, ply) {
     return TPStoCanvas(options);
 }
 
+function getTurnMessage(gameData, canvas, ply=gameData.hl) {
+    const nextPlayer = gameData[`player${canvas.player}Id`];
+    let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
+    if (ply) {
+        const lastPlayer = nextPlayer == 1 ? 2 : 1;
+        if (/''|"/.test(ply)) {
+            message += '\n*' + gameData['player' + lastPlayer];
+            message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
+            message += ' Tinuë.*';
+        } else if (/'/.test(ply)) {
+            message += '\n*Tak!*';
+        }
+    } else {
+        message += '\nType a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)'
+    }
+    return message;
+}
+
 function deleteLastTurn(msg, gameData) {
     try {
         fs.unlinkSync(getLastFilename(msg));
@@ -273,7 +291,7 @@ async function getGameMessages(msg) {
 
 // Functions to send to Discord
 
-async function sendPngToDiscord(msg, canvas, messageComment) {
+async function sendPngToDiscord(msg, canvas, message) {
     try {
         fs.mkdirSync('images', {recursive:true});
     } catch (err) {
@@ -285,7 +303,7 @@ async function sendPngToDiscord(msg, canvas, messageComment) {
     stream.pipe(out);
     await once(out, 'finish');
     try {
-        await msg.channel.send(messageComment, {
+        await msg.channel.send(message, {
             files: [{
                 attachment: filename,
                 name: filename
@@ -436,11 +454,10 @@ async function handleNew(msg, options) {
 
         saveGameData({ channel }, { tps: canvas.id, gameData });
         if (options.theme) {
-            setTheme({ channel }, options.theme, true);
+            setTheme({ channel }, options.theme);
         }
-        let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.\n'+
-            'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
-        sendPngToDiscord({ channel }, canvas, messageComment);
+        const message = getTurnMessage(gameData, canvas);
+        sendPngToDiscord({ channel }, canvas, message);
     }
 }
 
@@ -487,6 +504,8 @@ async function handleDelete(msg) {
 }
 
 async function handleMove(msg, ply) {
+    if (!isGameOngoing(msg)) return;
+
     let gameData = getGameData(msg);
     if (!gameData) return;
 
@@ -522,14 +541,7 @@ async function handleMove(msg, ply) {
         if (!msg.channel.name.includes('🆚')) {
             renameChannel(msg, true);
         }
-        let message = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.';
-        if (/''|"/.test(ply)) {
-            message += '\n*' + gameData['player' + gameData.turnMarker];
-            message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
-            message += ' Tinuë.*';
-        } else if (/'/.test(ply)) {
-            message += '\n*Tak!*';
-        }
+        const message = getTurnMessage(gameData, canvas, ply);
         await sendPngToDiscord(msg, canvas, message);
     } else {
         // Game is over
@@ -558,6 +570,10 @@ async function handleUndo(msg) {
         return sendMessage(msg, 'This isn\'t a game channel.');
     }
 
+    if (!gameData.hl) {
+        return sendMessage(msg, 'There\'s nothing to undo.');
+    }
+
     if (!isGameOngoing(msg)) {
         return sendMessage(msg, 'The game is over, but you can start a new game using the --tps flag!');
     }
@@ -575,7 +591,10 @@ async function handleUndo(msg) {
 
     await deleteLastGameMessage(msg);
     deleteLastTurn(msg, gameData);
-    return sendMessage(msg, 'Undo complete.');
+    gameData = getGameData(msg);
+    const canvas = drawBoard(gameData, getTheme(msg));
+    const message = 'Undo complete!\n' + getTurnMessage(gameData, canvas);
+    return sendPngToDiscord(msg, canvas, message);
 }
 
 async function handleLink(msg, gameId) {
@@ -631,9 +650,8 @@ async function handleRematch(msg) {
     }
 
     saveGameData(msg, { tps: canvas.id, gameData });
-    let messageComment = 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.\n'+
-        'Type a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)';
-    sendPngToDiscord(msg, canvas, messageComment);
+    const message = getTurnMessage(gameData, canvas);
+    sendPngToDiscord(msg, canvas, message);
 }
 
 function handleHistory(msg, page='1') {
@@ -660,29 +678,19 @@ function getTheme(msg) {
     return defaultTheme;
 }
 
-async function setTheme(msg, theme, silent=false) {
+function setTheme(msg, theme) {
     try {
         fs.mkdirSync(`data/${msg.channel.id}/meta`, {recursive:true});
         fs.writeFileSync(`data/${msg.channel.id}/meta/theme`, theme);
-        if (!silent) {
-            if (!isGameOngoing(msg)) {
-                return sendMessage(msg, 'Theme set.');
-            } else {
-                // Re-create current board
-                const gameData = getGameData(msg);
-                await deleteLastGameMessage(msg);
-                let canvas = drawBoard(gameData, theme);
-                let nextPlayer = gameData.player1Id;
-                if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
-                return sendPngToDiscord(msg, canvas, 'Your turn '+canvas.linenum+', <@'+nextPlayer+'>.');
-            }
-        }
+        return true;
     } catch (err) {
+        sendMessage(msg, 'Something went wrong when I tried to save the theme.');
         console.error(err);
+        return false;
     }
 }
 
-function handleTheme(msg, theme) {
+async function handleTheme(msg, theme) {
     if (!isGameChannel(msg)) {
         return sendMessage(msg, 'This isn\'t a game channel.');
     } else if (theme) {
@@ -697,7 +705,18 @@ function handleTheme(msg, theme) {
         } catch(err) {
             return sendMessage(msg, 'Invalid theme');
         }
-        setTheme(msg, theme);
+        if (setTheme(msg, theme)) {
+            if (!isGameOngoing(msg)) {
+                return sendMessage(msg, 'Theme set.');
+            } else {
+                // Re-create current board
+                const gameData = getGameData(msg);
+                await deleteLastGameMessage(msg);
+                const canvas = drawBoard(gameData, theme);
+                const message = getTurnMessage(gameData, canvas);
+                return sendPngToDiscord(msg, canvas, message);
+            }
+        }
     } else {
         theme = getTheme(msg);
 
