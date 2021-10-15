@@ -593,7 +593,7 @@ async function handleUndo(msg) {
     deleteLastTurn(msg, gameData);
     gameData = getGameData(msg);
     const canvas = drawBoard(gameData, getTheme(msg));
-    const message = getTurnMessage(gameData, canvas);
+    const message = 'Undo complete!\n' + getTurnMessage(gameData, canvas);
     return sendPngToDiscord(msg, canvas, message);
 }
 
