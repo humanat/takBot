@@ -726,8 +726,9 @@ async function handleTheme(msg, theme) {
 }
 
 function handleHelp(msg) {
-    let readme = fs.readFileSync('README.md', 'utf8');
-    return sendMessage(msg, readme.substr(readme.indexOf('\n')+1));
+    let help = fs.readFileSync('USAGE.md', 'utf8');
+    help = help.substr(help.indexOf('\n')+1);
+    return sendMessage(msg, help);
 }
 
 function handleRandom(msg, arg) {

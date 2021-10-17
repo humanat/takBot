@@ -1,34 +1,18 @@
-# takBot
+# Install
 
-Use `!tak @opponent` to start a new game. You can use `--option` to specify any of the following:
-  - `size` *(optional, default `6`):* Valid values are `3` through `8`.
-  - `komi` *(optional, default `0`):* A flat-score bonus for the second player. Valid values are -`20.5` through `20.5`.
-  - `tps` *(optional):* Begins the game from the specified board state.
-  - `theme` *(optional, default `discord`):* Uses the specified theme.
-  - `opening` *(optional, default `swap`):* Specify an opening variation. Valid values are `swap` and `no-swap`.
-  - `white` *(optional, boolean):* Seats the message author as Player 1.
-  - `random` *(optional, boolean):* Seats the message author randomly as Player 1 or 2.
-
-**Standalone commands**
-  - `rematch` to swap seats and play again using the same game settings.
-  - `themes` to see a list of themes for the board and pieces.
-  - `theme` to set the theme for the current channel.
-  - `undo` to step back one move in the game. Only available until the next player makes their move.
-  - `history` to see a list of finished games and their IDs. Use a page number to see older games.
-  - `link` to get a link for the current game in ptn.ninja.
-  - `end` to end the current game.
-  - `delete` to delete the current game channel and clean up.
-  - `help` to see this message.
-  - `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. Ex. `!tak reminder 1h`
-
-**Note:**
-  - By default, the player you challenge is **Player 1**.
-
-**How to:**
-  - Play Tak: <https://ustak.org/play-beautiful-game-tak/>
-  - Learn PTN: <https://ustak.org/portable-tak-notation/>
-
-**Example game start:**
-```
-!tak @opponent --size 5 --komi 1 --opening no-swap --random
-```
+1.  Install NodeJS and NPM
+2.  Clone the repo (<https://github.com/humanat/takBot>)
+3.  Run `npm i`
+4.  Run `git submodule init && git submodule sync && git submodule update`
+5.  Run `pushd TPS1.Ninja && npm i; popd`
+6.  Run `cp auth.json.template auth.json; cp results.db.template results.db`
+7.  Make your own application through Discord (<https://discord.com/developers/applications>)
+8.  Copy the token from the Bot page of the Discord portal to your application
+9.  Paste the token in `auth.json`
+10. Run `node bot` (`Ctrl+C` to end)
+11. Invite your bot to your own Discord server by generating an invite link from the OAuth2 page of the Discord portal
+    1.  Add redirect URL `https://discordapp.com/oauth2/authorize?&client_id=<ClientID>&scope=bot` with your client ID.
+    2.  Select scopes `bot` and `messages.read`
+    3.  Select the appropriate permissions
+    4.  Press the Copy button in the Scopes section
+    5.  Paste into a new browser tab
