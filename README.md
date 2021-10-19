@@ -1,10 +1,10 @@
-# Install
+# README
 
 1.  Install NodeJS and NPM
 2.  Clone the repo (<https://github.com/humanat/takBot>)
 3.  Run `npm i`
 4.  Run `git submodule init && git submodule sync && git submodule update`
-5.  Run `pushd TPS1.Ninja && npm i; popd`
+5.  Run `pushd TPS-Ninja && npm i && popd`
 6.  Run `cp auth.json.template auth.json; cp results.db.template results.db`
 7.  Make your own application through Discord (<https://discord.com/developers/applications>)
 8.  Copy the token from the Bot page of the Discord portal to your application
