@@ -46,6 +46,7 @@ function getGameData(msg) {
             [data.tps, data.hl] = fs.readFileSync(filename, 'utf8').split('\n');
             let parsedTPS = parseTPS(data.tps);
             data.turnMarker = String(parsedTPS.player);
+            data.moveNumber = Number(parsedTPS.linenum);
         }
         return data;
     } catch (err) {
@@ -89,10 +90,14 @@ function saveGameData(msg, { gameData, tps, ply }) {
 }
 
 function drawBoard(gameData, theme, ply) {
+    let moveNumber = gameData.moveNumber;
+    if (!ply && gameData.hl && gameData.turnMarker === '1') {
+        moveNumber -= 1;
+    }
     let options = {
         ...gameData,
+        moveNumber,
         theme,
-        padding: false,
         bgAlpha: 0
     }
     if (ply) {
@@ -415,6 +420,7 @@ async function handleNew(msg, options) {
         let nextPlayer = player1.id;
         if (options.tps) {
             gameData.initialTPS = tps;
+            gameData.moveNumber = Number(tpsParsed.linenum);
             if (tpsParsed.player != 1) nextPlayer = player2.id;
         }
         const gameId = createPtnFile(gameData);
@@ -726,8 +732,9 @@ async function handleTheme(msg, theme) {
 }
 
 function handleHelp(msg) {
-    let readme = fs.readFileSync('README.md', 'utf8');
-    return sendMessage(msg, readme.substr(readme.indexOf('\n')+1));
+    let help = fs.readFileSync('USAGE.md', 'utf8');
+    help = help.substr(help.indexOf('\n')+1);
+    return sendMessage(msg, help);
 }
 
 function handleRandom(msg, arg) {
