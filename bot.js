@@ -110,9 +110,9 @@ function getTurnMessage(gameData, canvas, ply=gameData.hl) {
     const nextPlayer = gameData[`player${canvas.player}Id`];
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
-        const lastPlayer = nextPlayer == 1 ? 2 : 1;
+        const lastPlayer = canvas.player == 1 ? 2 : 1;
         if (/''|"/.test(ply)) {
-            message += '\n*' + gameData['player' + lastPlayer];
+            message += '\n*' + gameData[`player${lastPlayer}`];
             message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
             message += ' Tinuë.*';
         } else if (/'/.test(ply)) {
