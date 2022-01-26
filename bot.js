@@ -298,29 +298,16 @@ async function getGameMessages(msg) {
 // Functions to send to Discord
 
 async function sendPngToDiscord(msg, canvas, message) {
-    try {
-        fs.mkdirSync('images', {recursive:true});
-    } catch (err) {
-        console.error(err);
-    }
-    let filename = `images/${msg.channel.id}.png`;
-    let out = fs.createWriteStream(filename);
-    let stream = canvas.pngStream();
-    stream.pipe(out);
-    await once(out, 'finish');
+    const filename = canvas.id + '.png';
+    const attachment = new Discord.MessageAttachment(canvas.toBuffer(), filename);
+
     try {
         await msg.channel.send(message, {
-            files: [{
-                attachment: filename,
-                name: filename
-            }]
+            files: [attachment]
         });
     } catch (err) {
         console.error(err);
     }
-    fs.unlink(filename, (err) => {
-        if (err) console.error(err);
-    });
 }
 
 async function sendMessage(msg, content) {
