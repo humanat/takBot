@@ -7,7 +7,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `theme` *(optional, default `discord`):* Uses the specified theme.
   - `opening` *(optional, default `swap`):* Specify an opening variation. Valid values are `swap` and `no-swap`.
   - `white` *(optional, boolean):* Seats the message author as Player 1.
-  - `random` *(optional, boolean):* Seats the message author randomly as Player 1 or 2.
+  - `black` *(optional, boolean):* Seats the message author as Player 2.
 
 **Standalone commands**
   - `rematch` to swap seats and play again using the same game settings.
@@ -22,7 +22,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. Ex. `!tak reminder 1h`
 
 **Note:**
-  - By default, the player you challenge is **Player 1**.
+  - By default, player seats are assigned randomly.
 
 **How to:**
   - Play Tak: <https://ustak.org/play-beautiful-game-tak/>
@@ -30,5 +30,5 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 
 **Example game start:**
 ```
-!tak @opponent --size 5 --komi 1 --opening no-swap --random
+!tak @opponent --size 5 --komi 1 --opening no-swap --black
 ```

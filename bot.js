@@ -343,7 +343,8 @@ async function handleNew(msg, options) {
     } else {
         let player1;
         let player2;
-        if (options.white || (options.random && Math.random() < 0.5)) {
+        let thisPlayer = options.white ? 1 : options.black ? 2 : 1 + Math.round(Math.random());
+        if (thisPlayer == 1) {
             player1 = msg.author;
             player2 = msg.mentions.users.first();
         } else {
