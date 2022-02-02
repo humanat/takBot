@@ -147,12 +147,12 @@ function cleanupFiles(msg, channelDeleted=false) {
     let dirname = `data/${msg.channel.id}/`;
     try {
         if (channelDeleted) {
-            fs.rmdirSync(dirname, {recursive:true, force:true});
+            fs.rmSync(dirname, {recursive:true, force:true});
         } else {
             if (!fs.existsSync(dirname)) {
                 return false;
             } else {
-                return fs.rmdirSync(dirname + 'tps', {recursive:true, force:true});
+                return fs.rmSync(dirname + 'tps', {recursive:true, force:true});
             }
         }
     } catch (err) {
