@@ -18,7 +18,7 @@ const defaultTheme = 'discord';
 // Helper functions
 
 function validPly(cmd) {
-    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"?!]*$/i.test(cmd);
+    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*$/i.test(cmd);
 }
 
 function getLastFilename(msg) {
@@ -515,6 +515,7 @@ async function handleMove(msg, ply) {
 
     let canvas;
     try {
+        ply = ply.replace('’', '\'').replace('”', '"');
         canvas = drawBoard(gameData, getTheme(msg), ply);
     } catch (err) {
         if (!/^Invalid|stones remaining$/.test(err.message)) {
