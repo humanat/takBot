@@ -18,7 +18,7 @@ const defaultTheme = 'discord';
 // Helper functions
 
 function validPly(cmd) {
-    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"?!]*$/i.test(cmd);
+    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*$/i.test(cmd);
 }
 
 function getLastFilename(msg) {
@@ -110,9 +110,9 @@ function getTurnMessage(gameData, canvas, ply=gameData.hl) {
     const nextPlayer = gameData[`player${canvas.player}Id`];
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
-        const lastPlayer = nextPlayer == 1 ? 2 : 1;
+        const lastPlayer = canvas.player == 1 ? 2 : 1;
         if (/''|"/.test(ply)) {
-            message += '\n*' + gameData['player' + lastPlayer];
+            message += '\n*' + gameData[`player${lastPlayer}`];
             message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
             message += ' Tinuë.*';
         } else if (/'/.test(ply)) {
@@ -147,12 +147,12 @@ function cleanupFiles(msg, channelDeleted=false) {
     let dirname = `data/${msg.channel.id}/`;
     try {
         if (channelDeleted) {
-            fs.rmdirSync(dirname, {recursive:true, force:true});
+            fs.rmSync(dirname, {recursive:true, force:true});
         } else {
             if (!fs.existsSync(dirname)) {
                 return false;
             } else {
-                return fs.rmdirSync(dirname + 'tps', {recursive:true, force:true});
+                return fs.rmSync(dirname + 'tps', {recursive:true, force:true});
             }
         }
     } catch (err) {
@@ -298,29 +298,16 @@ async function getGameMessages(msg) {
 // Functions to send to Discord
 
 async function sendPngToDiscord(msg, canvas, message) {
-    try {
-        fs.mkdirSync('images', {recursive:true});
-    } catch (err) {
-        console.error(err);
-    }
-    let filename = `images/${msg.channel.id}.png`;
-    let out = fs.createWriteStream(filename);
-    let stream = canvas.pngStream();
-    stream.pipe(out);
-    await once(out, 'finish');
+    const filename = canvas.id + '.png';
+    const attachment = new Discord.MessageAttachment(canvas.toBuffer(), filename);
+
     try {
         await msg.channel.send(message, {
-            files: [{
-                attachment: filename,
-                name: filename
-            }]
+            files: [attachment]
         });
     } catch (err) {
         console.error(err);
     }
-    fs.unlink(filename, (err) => {
-        if (err) console.error(err);
-    });
 }
 
 async function sendMessage(msg, content) {
@@ -356,7 +343,8 @@ async function handleNew(msg, options) {
     } else {
         let player1;
         let player2;
-        if (options.white || (options.random && Math.random() < 0.5)) {
+        let thisPlayer = options.white ? 1 : options.black ? 2 : 1 + Math.round(Math.random());
+        if (thisPlayer == 1) {
             player1 = msg.author;
             player2 = msg.mentions.users.first();
         } else {
@@ -527,6 +515,7 @@ async function handleMove(msg, ply) {
 
     let canvas;
     try {
+        ply = ply.replace('’', '\'').replace('”', '"');
         canvas = drawBoard(gameData, getTheme(msg), ply);
     } catch (err) {
         if (!/^Invalid|stones remaining$/.test(err.message)) {
