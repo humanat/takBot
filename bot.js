@@ -9,9 +9,17 @@ const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 const {Permissions} = require('discord.js');
 const timestring = require('timestring');
+const chrono = require('chrono-node');
 
 const client = new Discord.Client();
 const defaultTheme = 'discord';
+
+
+
+// Persisting variables
+
+let deleteTimers = [];
+let reminderTimers = [];
 
 
 
@@ -122,6 +130,11 @@ function getTurnMessage(gameData, canvas, ply=gameData.hl) {
         message += '\nType a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)'
     }
     return message;
+}
+
+function getReminderMessage(gameData, canvas) {
+    const nextPlayer = gameData[`player${canvas.player}Id`];
+    return `It's been a while since your last move. Please take your turn soon, <@${nextPlayer}>.`;
 }
 
 function deleteLastTurn(msg, gameData) {
@@ -284,6 +297,41 @@ function getHistoryFromFile(page) {
     }
 }
 
+async function deleteLastGameMessage(msg) {
+    let messages = await getGameMessages(msg);
+    if (messages.array().length > 0) {
+        messages.first().delete();
+    }
+}
+
+async function setDeleteTimer(msg) {
+    await sendMessage(msg, 'This channel will self destruct in approximately 24 hours unless a new game is started.');
+    let timerId = setTimeout(handleDelete, 86400000, msg);
+    deleteTimers[msg.channel.id] = timerId;
+}
+
+async function clearDeleteTimer(msg) {
+    let timerId = deleteTimers[msg.channel.id];
+    if (timerId) {
+        clearTimeout(timerId);
+        deleteTimers.splice(deleteTimers.indexOf(timerId), 1);
+    }
+}
+
+async function setReminderTimer(msg, gameData, canvas) {
+    let message = getReminderMessage(gameData, canvas);
+    let timerId = setInterval(sendMessage, 86400000, msg, message);
+    reminderTimers[msg.channel.id] = timerId;
+}
+
+async function clearReminderTimer(msg) {
+    let timerId = reminderTimers[msg.channel.id];
+    if (timerId) {
+        clearInterval(timerId);
+        reminderTimers.splice(reminderTimers.indexOf(timerId), 1);
+    }
+}
+
 
 
 // Getter functions for reading from Discord
@@ -322,13 +370,6 @@ async function sendMessage(msg, content) {
     }
 }
 
-async function deleteLastGameMessage(msg) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length > 0) {
-        messages.first().delete();
-    }
-}
-
 
 
 // Major handler methods
@@ -342,14 +383,20 @@ async function handleNew(msg, options) {
         return sendMessage(msg, 'Sorry, I don\'t know how to play yet. I just facilitate games. Challenge someone else!');
     } else {
         let player1;
+        let displayName1;
         let player2;
+        let displayName2;
         let thisPlayer = options.white ? 1 : options.black ? 2 : 1 + Math.round(Math.random());
         if (thisPlayer == 1) {
             player1 = msg.author;
+            displayName1 = msg.member.displayName;
             player2 = msg.mentions.users.first();
+            displayName2 = msg.mentions.members.first().displayName;
         } else {
             player1 = msg.mentions.users.first();
+            displayName1 = msg.mentions.members.first().displayName;
             player2 = msg.author;
+            displayName2 = msg.member.displayName;
         }
 
         let tps = options.tps || options.size || 6;
@@ -399,8 +446,8 @@ async function handleNew(msg, options) {
         const gameData = {
             player1Id: player1.id,
             player2Id: player2.id,
-            player1: player1.username,
-            player2: player2.username,
+            player1: displayName1,
+            player2: displayName2,
             size,
             komi,
             opening
@@ -453,6 +500,8 @@ async function handleNew(msg, options) {
         }
         const message = getTurnMessage(gameData, canvas);
         sendPngToDiscord({ channel }, canvas, message);
+
+        clearDeleteTimer(msg);
     }
 }
 
@@ -468,6 +517,8 @@ async function handleEnd(msg) {
     if (isGameOngoing(msg)) {
         cleanupFiles(msg);
         deletePtnFile(getGameData(msg));
+        clearReminderTimer(msg);
+        setDeleteTimer(msg);
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
         return renameChannel(msg, false);
     } else {
@@ -539,6 +590,9 @@ async function handleMove(msg, ply) {
         }
         const message = getTurnMessage(gameData, canvas, ply);
         await sendPngToDiscord(msg, canvas, message);
+
+        clearReminderTimer(msg);
+        setReminderTimer(msg, gameData, canvas);
     } else {
         // Game is over
         const result = canvas.id;
@@ -554,8 +608,10 @@ async function handleMove(msg, ply) {
             });
         }
         await sendPngToDiscord(msg, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
-        await sendMessage(msg, 'Here\'s a link to the completed game:');
+        await sendMessage(msg, `Here's a link to the completed game:\nID: ${gameData.gameId}`);
         await handleLink(msg, gameData.gameId);
+        clearReminderTimer(msg);
+        setDeleteTimer(msg);
         return renameChannel(msg, false);
     }
 }
@@ -590,6 +646,10 @@ async function handleUndo(msg) {
     gameData = getGameData(msg);
     const canvas = drawBoard(gameData, getTheme(msg));
     const message = 'Undo complete!\n' + getTurnMessage(gameData, canvas);
+
+    clearReminderTimer(msg);
+    setReminderTimer(msg, gameData, canvas);
+
     return sendPngToDiscord(msg, canvas, message);
 }
 
@@ -648,6 +708,9 @@ async function handleRematch(msg) {
     saveGameData(msg, { tps: canvas.id, gameData });
     const message = getTurnMessage(gameData, canvas);
     sendPngToDiscord(msg, canvas, message);
+
+    clearDeleteTimer(msg);
+    setReminderTimer(msg, gameData, canvas);
 }
 
 function handleHistory(msg, page='1') {
@@ -743,6 +806,15 @@ function handleReminder(msg, arg) {
     }
 }
 
+function handleDate(msg, arg) {
+    try {
+        let time = Math.round(Date.parse(chrono.parseDate(arg))/1000);
+        sendMessage(msg, '<t:'+time+'>');
+    } catch(err) {
+        sendMessage(msg, 'I\'m sorry, I couldn\'t convert that date.');
+    }
+}
+
 
 
 // Main code
@@ -778,6 +850,8 @@ client.on('message', msg => {
                 return handleDelete(msg);
             case 'reminder':
                 return handleReminder(msg, args[1]);
+            case 'date':
+                return handleDate(msg, message.substring(10));
             default:
                 args.shift();
                 let options = parser(args);
