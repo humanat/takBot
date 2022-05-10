@@ -16,6 +16,13 @@ const defaultTheme = 'discord';
 
 
 
+// Persisting variables
+
+let deleteTimers = [];
+let reminderTimers = [];
+
+
+
 // Helper functions
 
 function validPly(cmd) {
@@ -123,6 +130,11 @@ function getTurnMessage(gameData, canvas, ply=gameData.hl) {
         message += '\nType a valid move in PTN to play.\n(<https://ustak.org/portable-tak-notation/>)'
     }
     return message;
+}
+
+function getReminderMessage(gameData, canvas) {
+    const nextPlayer = gameData[`player${canvas.player}Id`];
+    return `It's been a while since your last move. Please take your turn soon, <@${nextPlayer}>.`;
 }
 
 function deleteLastTurn(msg, gameData) {
@@ -285,6 +297,41 @@ function getHistoryFromFile(page) {
     }
 }
 
+async function deleteLastGameMessage(msg) {
+    let messages = await getGameMessages(msg);
+    if (messages.array().length > 0) {
+        messages.first().delete();
+    }
+}
+
+async function setDeleteTimer(msg) {
+    await sendMessage(msg, 'This channel will self destruct in approximately 24 hours unless a new game is started.');
+    let timerId = setTimeout(handleDelete, 86400000, msg);
+    deleteTimers[msg.channel.id] = timerId;
+}
+
+async function clearDeleteTimer(msg) {
+    let timerId = deleteTimers[msg.channel.id];
+    if (timerId) {
+        clearTimeout(timerId);
+        deleteTimers.splice(deleteTimers.indexOf(timerId), 1);
+    }
+}
+
+async function setReminderTimer(msg, gameData, canvas) {
+    let message = getReminderMessage(gameData, canvas);
+    let timerId = setInterval(sendMessage, 86400000, msg, message);
+    reminderTimers[msg.channel.id] = timerId;
+}
+
+async function clearReminderTimer(msg) {
+    let timerId = reminderTimers[msg.channel.id];
+    if (timerId) {
+        clearInterval(timerId);
+        reminderTimers.splice(reminderTimers.indexOf(timerId), 1);
+    }
+}
+
 
 
 // Getter functions for reading from Discord
@@ -320,13 +367,6 @@ async function sendMessage(msg, content) {
         }
     } catch (err) {
         console.error(err);
-    }
-}
-
-async function deleteLastGameMessage(msg) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length > 0) {
-        messages.first().delete();
     }
 }
 
@@ -460,6 +500,8 @@ async function handleNew(msg, options) {
         }
         const message = getTurnMessage(gameData, canvas);
         sendPngToDiscord({ channel }, canvas, message);
+
+        clearDeleteTimer(msg);
     }
 }
 
@@ -475,6 +517,8 @@ async function handleEnd(msg) {
     if (isGameOngoing(msg)) {
         cleanupFiles(msg);
         deletePtnFile(getGameData(msg));
+        clearReminderTimer(msg);
+        setDeleteTimer(msg);
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
         return renameChannel(msg, false);
     } else {
@@ -546,6 +590,9 @@ async function handleMove(msg, ply) {
         }
         const message = getTurnMessage(gameData, canvas, ply);
         await sendPngToDiscord(msg, canvas, message);
+
+        clearReminderTimer(msg);
+        setReminderTimer(msg, gameData, canvas);
     } else {
         // Game is over
         const result = canvas.id;
@@ -561,8 +608,10 @@ async function handleMove(msg, ply) {
             });
         }
         await sendPngToDiscord(msg, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
-        await sendMessage(msg, 'Here\'s a link to the completed game:');
+        await sendMessage(msg, `Here's a link to the completed game:\nID: ${gameData.gameId}`);
         await handleLink(msg, gameData.gameId);
+        clearReminderTimer(msg);
+        setDeleteTimer(msg);
         return renameChannel(msg, false);
     }
 }
@@ -597,6 +646,10 @@ async function handleUndo(msg) {
     gameData = getGameData(msg);
     const canvas = drawBoard(gameData, getTheme(msg));
     const message = 'Undo complete!\n' + getTurnMessage(gameData, canvas);
+
+    clearReminderTimer(msg);
+    setReminderTimer(msg, gameData, canvas);
+
     return sendPngToDiscord(msg, canvas, message);
 }
 
@@ -655,6 +708,9 @@ async function handleRematch(msg) {
     saveGameData(msg, { tps: canvas.id, gameData });
     const message = getTurnMessage(gameData, canvas);
     sendPngToDiscord(msg, canvas, message);
+
+    clearDeleteTimer(msg);
+    setReminderTimer(msg, gameData, canvas);
 }
 
 function handleHistory(msg, page='1') {
