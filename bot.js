@@ -9,6 +9,7 @@ const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 const {Permissions} = require('discord.js');
 const timestring = require('timestring');
+const chrono = require('chrono-node');
 
 const client = new Discord.Client();
 const defaultTheme = 'discord';
@@ -342,14 +343,20 @@ async function handleNew(msg, options) {
         return sendMessage(msg, 'Sorry, I don\'t know how to play yet. I just facilitate games. Challenge someone else!');
     } else {
         let player1;
+        let displayName1;
         let player2;
+        let displayName2;
         let thisPlayer = options.white ? 1 : options.black ? 2 : 1 + Math.round(Math.random());
         if (thisPlayer == 1) {
             player1 = msg.author;
+            displayName1 = msg.member.displayName;
             player2 = msg.mentions.users.first();
+            displayName2 = msg.mentions.members.first().displayName;
         } else {
             player1 = msg.mentions.users.first();
+            displayName1 = msg.mentions.members.first().displayName;
             player2 = msg.author;
+            displayName2 = msg.member.displayName;
         }
 
         let tps = options.tps || options.size || 6;
@@ -399,8 +406,8 @@ async function handleNew(msg, options) {
         const gameData = {
             player1Id: player1.id,
             player2Id: player2.id,
-            player1: player1.username,
-            player2: player2.username,
+            player1: displayName1,
+            player2: displayName2,
             size,
             komi,
             opening
@@ -743,6 +750,15 @@ function handleReminder(msg, arg) {
     }
 }
 
+function handleDate(msg, arg) {
+    try {
+        let time = Math.round(Date.parse(chrono.parseDate(arg))/1000);
+        sendMessage(msg, '<t:'+time+'>');
+    } catch(err) {
+        sendMessage(msg, 'I\'m sorry, I couldn\'t convert that date.');
+    }
+}
+
 
 
 // Main code
@@ -778,6 +794,8 @@ client.on('message', msg => {
                 return handleDelete(msg);
             case 'reminder':
                 return handleReminder(msg, args[1]);
+            case 'date':
+                return handleDate(msg, message.substring(10));
             default:
                 args.shift();
                 let options = parser(args);
