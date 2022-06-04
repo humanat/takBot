@@ -653,6 +653,16 @@ async function handleLink(msg, gameId) {
     }
 }
 
+async function handleRedraw(msg) {
+    if (!isGameOngoing(msg)) {
+        return sendMessage(msg, 'I couldn\'t find an ongoing game in this channel.');
+    }
+    const gameData = getGameData(msg);
+    const canvas = drawBoard(gameData, getTheme(msg));
+    const message = getTurnMessage(gameData, canvas);
+    return sendPngToDiscord(msg, canvas, message);
+}
+
 async function handleRematch(msg) {
     const gameData = getGameData(msg);
     if (!gameData) {
@@ -751,11 +761,7 @@ async function handleTheme(msg, theme) {
             if (!isGameOngoing(msg)) {
                 return sendMessage(msg, 'Theme set.');
             } else {
-                // Re-create current board
-                const gameData = getGameData(msg);
-                const canvas = drawBoard(gameData, theme);
-                const message = getTurnMessage(gameData, canvas);
-                return sendPngToDiscord(msg, canvas, message);
+                handleRedraw(msg);
             }
         }
     } else {
@@ -818,6 +824,8 @@ client.on('message', msg => {
                 return handleUndo(msg);
             case 'link':
                 return handleLink(msg, args[1]);
+            case 'redraw':
+                return handleRedraw(msg);
             case 'rematch':
                 return handleRematch(msg);
             case 'history':
