@@ -710,7 +710,7 @@ function handleHistory(msg, page='1') {
     try {
         let historyData = getHistoryFromFile(parseInt(page));
         if (historyData) {
-            return sendMessage(msg, historyData);
+            return sendMessage(msg, '```\n' + historyData + '\n```');
         } else {
             return sendMessage(msg, 'Not a valid page number');
         }
