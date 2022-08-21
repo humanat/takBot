@@ -16,6 +16,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
   - `undo` to step back one move in the game. Only available until the next player makes their move.
   - `history` to see a list of finished games and their IDs. Use a page number to see older games.
   - `link` to get a link for the current game in ptn.ninja.
+  - `redraw` to re-send the last board of the current game.
   - `end` to end the current game.
   - `delete` to delete the current game channel and clean up.
   - `help` to see this message.

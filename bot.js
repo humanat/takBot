@@ -297,13 +297,6 @@ function getHistoryFromFile(page) {
     }
 }
 
-async function deleteLastGameMessage(msg) {
-    let messages = await getGameMessages(msg);
-    if (messages.array().length > 0) {
-        messages.first().delete();
-    }
-}
-
 async function setDeleteTimer(msg) {
     await sendMessage(msg, 'This channel will self destruct in approximately 24 hours unless a new game is started.');
     let timerId = setTimeout(handleDelete, 86400000, msg);
@@ -330,15 +323,6 @@ async function clearReminderTimer(msg) {
         clearInterval(timerId);
         reminderTimers.splice(reminderTimers.indexOf(timerId), 1);
     }
-}
-
-
-
-// Getter functions for reading from Discord
-
-async function getGameMessages(msg) {
-    let messages = await msg.channel.messages.fetch();
-    return messages.filter(m => m.author.id === client.user.id).filter(m => m.attachments.array().length);
 }
 
 
@@ -641,7 +625,6 @@ async function handleUndo(msg) {
         return sendMessage(msg, 'You cannot undo a move that is not your own.');
     }
 
-    await deleteLastGameMessage(msg);
     deleteLastTurn(msg, gameData);
     gameData = getGameData(msg);
     const canvas = drawBoard(gameData, getTheme(msg));
@@ -668,6 +651,16 @@ async function handleLink(msg, gameId) {
     } else {
         return sendMessage(msg, `<https://ptn.ninja/${compressToEncodedURIComponent(ptn)}>`);
     }
+}
+
+async function handleRedraw(msg) {
+    if (!isGameOngoing(msg)) {
+        return sendMessage(msg, 'I couldn\'t find an ongoing game in this channel.');
+    }
+    const gameData = getGameData(msg);
+    const canvas = drawBoard(gameData, getTheme(msg));
+    const message = getTurnMessage(gameData, canvas);
+    return sendPngToDiscord(msg, canvas, message);
 }
 
 async function handleRematch(msg) {
@@ -717,7 +710,7 @@ function handleHistory(msg, page='1') {
     try {
         let historyData = getHistoryFromFile(parseInt(page));
         if (historyData) {
-            return sendMessage(msg, historyData);
+            return sendMessage(msg, '```\n' + historyData + '\n```');
         } else {
             return sendMessage(msg, 'Not a valid page number');
         }
@@ -768,12 +761,7 @@ async function handleTheme(msg, theme) {
             if (!isGameOngoing(msg)) {
                 return sendMessage(msg, 'Theme set.');
             } else {
-                // Re-create current board
-                const gameData = getGameData(msg);
-                await deleteLastGameMessage(msg);
-                const canvas = drawBoard(gameData, theme);
-                const message = getTurnMessage(gameData, canvas);
-                return sendPngToDiscord(msg, canvas, message);
+                handleRedraw(msg);
             }
         }
     } else {
@@ -836,6 +824,8 @@ client.on('message', msg => {
                 return handleUndo(msg);
             case 'link':
                 return handleLink(msg, args[1]);
+            case 'redraw':
+                return handleRedraw(msg);
             case 'rematch':
                 return handleRematch(msg);
             case 'history':
