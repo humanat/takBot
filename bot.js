@@ -199,7 +199,9 @@ function createPtnFile(gameData) {
         + `[Player2 "${gameData.player2}"]`
         + `[Size "${gameData.size}"]`
         + `[Komi "${gameData.komi}"]`
-        + `[Opening "${gameData.opening}"]`;
+    if (gameData.opening != 'swap') {
+        data += `[Opening "${gameData.opening}"]`;
+    }
     if (gameData.initialTPS) {
         data = `[TPS "${gameData.initialTPS}"]` + data;
     }
