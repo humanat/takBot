@@ -499,8 +499,13 @@ function renameChannel(msg, inProgress) {
 
 async function handleEnd(msg) {
     if (isGameOngoing(msg)) {
+        let gameData = getGameData(msg);
+        if (gameData.hl) {
+            await sendMessage(msg, 'Here\'s a link to the game:');
+            await handleLink(msg);
+        }
         cleanupFiles(msg);
-        deletePtnFile(getGameData(msg));
+        deletePtnFile(gameData);
         clearReminderTimer(msg);
         setDeleteTimer(msg);
         await sendMessage(msg, 'Ongoing game in this channel has been removed.');
