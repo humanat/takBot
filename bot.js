@@ -499,6 +499,36 @@ function renameChannel(msg, inProgress) {
     ).catch(err => console.error(err));
 }
 
+async function handleResign(msg) {
+    let gameData = getGameData(msg);
+
+    if (gameData) {
+        const result = gameData.turnMarker === '1' ? '0-1' : '1-0';
+        let nextPlayer = gameData.player1Id;
+        if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
+        addPlyToPtnFile(gameData.gameId, result);
+        cleanupFiles(msg);
+        if (gameData.gameId) {
+            addToHistoryFile({
+                'gameId': gameData.gameId,
+                'player1': gameData.player1,
+                'player2': gameData.player2,
+                'komi': gameData.komi,
+                'opening': gameData.opening,
+                'result': result
+            });
+        }
+        await sendMessage(msg, `GG <@${nextPlayer}>! Game Ended ${result}`);
+        await sendMessage(msg, `Here's a link to the completed game:\nID: ${gameData.gameId}`);
+        await handleLink(msg, gameData.gameId);
+        clearReminderTimer(msg);
+        setDeleteTimer(msg);
+        return renameChannel(msg, false);
+    } else {
+        return sendMessage(msg, 'There is no ongoing game in this channel.');
+    }
+}
+
 async function handleEnd(msg) {
     if (isGameOngoing(msg)) {
         let gameData = getGameData(msg);
@@ -841,6 +871,8 @@ client.on('message', msg => {
                 return handleTheme(msg, args.slice(1).join(' '));
             case 'themes':
                 return sendMessage(msg, themes.map(t => t.id).join('\n'));
+            case 'resign':
+                return handleResign(msg);
             case 'end':
                 return handleEnd(msg);
             case 'delete':
