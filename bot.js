@@ -119,6 +119,7 @@ function getTurnMessage(gameData, canvas, ply=gameData.hl) {
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
         const lastPlayer = canvas.player == 1 ? 2 : 1;
+        message = ply + ' | ' + message;
         if (/''|"/.test(ply)) {
             message += '\n*' + gameData[`player${lastPlayer}`];
             message += ply.includes('?') ? ' thinks that might be' : ' is pretty sure that\'s';
@@ -628,7 +629,7 @@ async function handleMove(msg, ply) {
                 'result': result
             });
         }
-        await sendPngToDiscord(msg, canvas, `GG <@${nextPlayer}>! Game Ended ${result}`);
+        await sendPngToDiscord(msg, canvas, `${ply} | GG <@${nextPlayer}>! Game Ended ${result}`);
         await sendMessage(msg, `Here's a link to the completed game:\nID: ${gameData.gameId}`);
         await handleLink(msg, gameData.gameId);
         clearReminderTimer(msg);
