@@ -883,9 +883,11 @@ client.on('message', msg => {
                 return handleDate(msg, message.substring(10));
             default:
                 args.shift();
-                let options = parser(args);
+                let options = parser(
+                  args.map(arg => arg.toLowerCase().replace(/[—–]+/g, "--"))
+                );
                 return handleNew(msg, options);
-        }
+            }
     } else if (message.length >= 4 && message.substring(0,4).toLowerCase() === '!rng') {
         let args = message.substring(5).split(' ');
         args = args.filter(arg => arg && arg.length);
