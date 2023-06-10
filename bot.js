@@ -5,7 +5,6 @@ const auth = require('./auth.json');
 const parser = require('minimist');
 const {TPStoCanvas, parseTPS, parseTheme} = require('./TPS-Ninja/src');
 const {themes} = require('./TPS-Ninja/src/themes');
-const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 const {Permissions} = require('discord.js');
 const timestring = require('timestring');
@@ -407,7 +406,7 @@ async function handleNew(msg, options) {
 
         // Komi
         let komi = options.komi || 0;
-        if (komi < -20.5 || komi > 20.5) {
+        if (komi < -4.5 || komi > 4.5) {
             return sendMessage(msg, 'Invalid komi.');
         }
 
@@ -884,7 +883,9 @@ client.on('message', msg => {
                 return handleDate(msg, message.substring(10));
             default:
                 args.shift();
-                let options = parser(args);
+                let options = parser(
+                  args.map(arg => arg.toLowerCase().replace(/[—–]+/g, "--"))
+                );
                 return handleNew(msg, options);
         }
     } else if (message.length >= 4 && message.substring(0,4).toLowerCase() === '!rng') {
