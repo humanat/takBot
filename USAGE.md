@@ -23,7 +23,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 - `end` to cancel the current game.
 - `delete` to delete the current game channel and clean up.
 - `help` to see this message.
-- `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. Ex. `!tak reminder 1h`
+- `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. (e.g. `!tak reminder 1h`)
 
 **Note:**
 
