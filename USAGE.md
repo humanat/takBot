@@ -20,7 +20,7 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 - `link` to get a ptn.ninja link for the current game, or the game specified by ID.
 - `redraw` to re-send the last board of the current game.
 - `resign` to forfeit the current game.
-- `end` to end the current game.
+- `end` to cancel the current game.
 - `delete` to delete the current game channel and clean up.
 - `help` to see this message.
 - `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. Ex. `!tak reminder 1h`
