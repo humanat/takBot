@@ -5,7 +5,6 @@ const auth = require('./auth.json');
 const parser = require('minimist');
 const {TPStoCanvas, parseTPS, parseTheme} = require('./TPS-Ninja/src');
 const {themes} = require('./TPS-Ninja/src/themes');
-const {once} = require('events');
 const {compressToEncodedURIComponent} = require('lz-string');
 const {Permissions} = require('discord.js');
 const timestring = require('timestring');
