@@ -2,7 +2,7 @@
 
 Use `!tak @opponent` to start a new game. You can use `--option` to specify any of the following:
   - `size` *(optional, default `6`):* Valid values are `3` through `8`.
-  - `komi` *(optional, default `0`):* A flat-score bonus for the second player. Valid values are -`20.5` through `20.5`.
+  - `komi` *(optional, default `0`):* A flat-score bonus for the second player. Valid values are -`4.5` through `4.5`.
   - `tps` *(optional):* Begins the game from the specified board state.
   - `theme` *(optional, default `discord`):* Uses the specified theme.
   - `opening` *(optional, default `swap`):* Specify an opening variation. Valid values are `swap` and `no-swap`.

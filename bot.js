@@ -406,7 +406,7 @@ async function handleNew(msg, options) {
 
         // Komi
         let komi = options.komi || 0;
-        if (komi < -20.5 || komi > 20.5) {
+        if (komi < -4.5 || komi > 4.5) {
             return sendMessage(msg, 'Invalid komi.');
         }
 
