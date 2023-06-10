@@ -887,7 +887,7 @@ client.on('message', msg => {
                   args.map(arg => arg.toLowerCase().replace(/[—–]+/g, "--"))
                 );
                 return handleNew(msg, options);
-            }
+        }
     } else if (message.length >= 4 && message.substring(0,4).toLowerCase() === '!rng') {
         let args = message.substring(5).split(' ');
         args = args.filter(arg => arg && arg.length);
