@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "chrono-node": "^2.3.8",
-    "discord.js": "^12.5.1",
-    "lz-string": "^1.4.4",
-    "minimist": "^1.2.6",
+    "chrono-node": "^2.6.3",
+    "discord.js": "^12.5.3",
+    "lz-string": "^1.5.0",
+    "minimist": "^1.2.8",
     "timestring": "^6.0.0"
   }
 }
