@@ -503,7 +503,15 @@ async function handleResign(msg) {
     let gameData = getGameData(msg);
 
     if (gameData) {
-        const result = gameData.turnMarker === '1' ? '0-1' : '1-0';
+        let result;
+        if (msg.author.id === gameData.player1Id) {
+            result = "0-1";
+        } else if (msg.author.id === gameData.player2Id) {
+            result = "1-0";
+        } else {
+            return sendMessage(msg, "You are not an active player.");
+        };
+
         let nextPlayer = gameData.player1Id;
         if (gameData.turnMarker === '1') nextPlayer = gameData.player2Id;
         addPlyToPtnFile(gameData.gameId, result);
