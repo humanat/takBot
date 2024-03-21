@@ -105,7 +105,8 @@ function drawBoard(gameData, theme, ply) {
         ...gameData,
         moveNumber,
         theme,
-        bgAlpha: 0
+        bgAlpha: 0,
+        padding: false
     }
     if (ply) {
         options.ply = ply;
