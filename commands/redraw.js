@@ -1,24 +1,29 @@
-const {SlashCommandBuilder} = require('discord.js');
+const { SlashCommandBuilder } = require("discord.js");
 const {
-    drawBoard,
-    getGameData,
-    getTheme,
-    getTurnMessage,
-    isGameOngoing,
-    sendPngToDiscord,
-} = require('../util');
+	drawBoard,
+	getGameData,
+	getTheme,
+	getTurnMessage,
+	isGameOngoing,
+	sendMessage,
+	sendPngToDiscord,
+} = require("../util");
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('redraw')
-		.setDescription('Re-send the last board of the current game.'),
+		.setName("redraw")
+		.setDescription("Re-send the last board of the current game."),
 	async execute(interaction) {
 		if (!isGameOngoing(interaction)) {
-            return sendMessage(interaction, 'I couldn\'t find an ongoing game in this channel.');
-        }
-        const gameData = getGameData(interaction);
-        const canvas = drawBoard(gameData, getTheme(interaction));
-        const message = getTurnMessage(gameData, canvas);
-        return sendPngToDiscord(interaction, canvas, message);
+			return sendMessage(
+				interaction,
+				"I couldn't find an ongoing game in this channel.",
+				true
+			);
+		}
+		const gameData = getGameData(interaction);
+		const canvas = drawBoard(gameData, getTheme(interaction));
+		const message = getTurnMessage(gameData, canvas);
+		await sendPngToDiscord(interaction, canvas, message);
 	},
 };

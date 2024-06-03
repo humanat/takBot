@@ -1,11 +1,11 @@
-const {SlashCommandBuilder} = require('discord.js');
+const { SlashCommandBuilder } = require("discord.js");
+const { handleDelete } = require("../util");
 
 module.exports = {
 	data: new SlashCommandBuilder()
-		.setName('delete')
-		.setDescription('Delete the current game channel.'),
+		.setName("delete")
+		.setDescription("Delete the current game channel."),
 	async execute(interaction) {
-		// interaction.member.username
-		await interaction.reply();
+		return handleDelete(interaction);
 	},
 };
