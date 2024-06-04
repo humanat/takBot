@@ -1,7 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { parseTheme } = require("../TPS-Ninja/src");
-const { themes } = require("../TPS-Ninja/src/themes");
-const themeIDs = Object.values(themes).map(({ id }) => id);
 const {
 	getGameData,
 	getTheme,
@@ -23,14 +21,6 @@ module.exports = {
 				.setDescription("Theme name or JSON")
 				.setAutocomplete(true)
 		),
-	async autocomplete(interaction) {
-		const focusedValue = interaction.options.getFocused().toLowerCase();
-		return interaction.respond(
-			themeIDs
-				.filter((choice) => choice.startsWith(focusedValue))
-				.map((choice) => ({ name: choice, value: choice }))
-		);
-	},
 	async execute(interaction) {
 		let theme = interaction.options.getString("theme");
 		if (!isGameChannel(interaction)) {

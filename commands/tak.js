@@ -89,18 +89,6 @@ module.exports = {
 				.setDescription("Theme name or JSON")
 				.setAutocomplete(true)
 		),
-	async autocomplete(interaction) {
-		console.log(interaction);
-		const focusedOption = interaction.options.getFocused(true);
-		if (focusedOption.name === "theme") {
-			const focusedValue = focusedOption.value.toLowerCase();
-			return interaction.respond(
-				themeIDs
-					.filter((choice) => choice.startsWith(focusedValue))
-					.map((choice) => ({ name: choice, value: choice }))
-			);
-		}
-	},
 	async execute(interaction, client) {
 		const options = interaction.options;
 		const opponent = options.getUser("opponent");
