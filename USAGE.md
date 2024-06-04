@@ -1,29 +1,33 @@
 # takBot
 
-Use `!tak @opponent` to start a new game. You can use `--option` to specify any of the following:
+Use `/tak @opponent` to start a new game. You can specify any of the following:
 
 - `size` _(optional, default `6`):_ Valid values are `3` through `8`.
 - `komi` _(optional, default `0`):_ A flat-score bonus for the second player. Valid values are -`4.5` through `4.5`.
+- `color` _(optional):_ Seats the message author as White (Player 1) or Black (Player 2).
 - `tps` _(optional):_ Begins the game from the specified board state.
-- `theme` _(optional, default `discord`):_ Uses the specified theme.
 - `opening` _(optional, default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
-- `white` _(optional, boolean):_ Seats the message author as Player 1.
-- `black` _(optional, boolean):_ Seats the message author as Player 2.
+- `caps` _(optional):_ Override the number of cap stones per player.
+- `flats` _(optional):_ Override the number of flat stones per player.
+- `theme` _(optional, default `discord`):_ Uses the specified theme.
+- `blind` _(optional, boolean):_ Never show the board.
 
 **Standalone commands:**
 
-- `rematch` to swap seats and play again using the same game settings.
-- `themes` to see a list of themes for the board and pieces.
-- `theme` to set the theme for the current channel.
-- `undo` to step back one move in the game. Only available until the next player makes their move.
-- `history` to see a list of finished games and their IDs. Use a page number to see older games.
+- `datetime` to display a date/time in everyone's local time zone.
+- `delete` to delete the current game channel.
+- `end` to cancel the current game.
+- `history` to see a list of finished games and their IDs. Specify a page number to see older games.
+- `info` to display information about the current game (useful for bots).
 - `link` to get a ptn.ninja link for the current game, or the game specified by ID.
 - `redraw` to re-send the last board of the current game.
+- `rematch` to swap seats and play again using the same game settings.
+- `reminder` to set a reminder ping. Takes one or more time arguments (e.g. `/reminder 1h 30m`).
 - `resign` to forfeit the current game.
-- `end` to cancel the current game.
-- `delete` to delete the current game channel and clean up.
-- `help` to see this message.
-- `reminder` to set a reminder ping. Takes one time argument but understands h, m, d, etc. (e.g. `!tak reminder 1h`)
+- `rng` to generate a random number betwen 1 and some other number.
+- `theme` to set the theme for the current channel.
+- `themes` to see a list of themes for the board and pieces.
+- `undo` to step back one move in the game. Only available until the next player makes their move.
 
 **Note:**
 
@@ -33,9 +37,3 @@ Use `!tak @opponent` to start a new game. You can use `--option` to specify any 
 
 - Play Tak: <https://ustak.org/play-beautiful-game-tak/>
 - Learn PTN: <https://ustak.org/portable-tak-notation/>
-
-**Example game start:**
-
-```
-!tak @opponent --size 5 --komi 1 --opening no-swap --black
-```

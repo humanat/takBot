@@ -9,8 +9,9 @@
 7.  Make your own application through Discord (<https://discord.com/developers/applications>)
 8.  Copy the token from the Bot page of the Discord portal to your application
 9.  Paste the token in `auth.json`
-10. Run `node bot` (`Ctrl+C` to end)
-11. Invite your bot to your own Discord server by generating an invite link from the OAuth2 page of the Discord portal
+10. Run `node deploy-commands`
+11. Run `node bot` (`Ctrl+C` to end)
+12. Invite your bot to your own Discord server by generating an invite link from the OAuth2 page of the Discord portal
     1.  Add redirect URL `https://discordapp.com/oauth2/authorize?&client_id=<ClientID>&scope=bot` with your client ID.
     2.  Select scopes `bot` and `messages.read`
     3.  Select the appropriate permissions
