@@ -43,6 +43,9 @@ client.on(Discord.Events.ClientReady, () => {
 
 	// Restore timers
 	const channelsDir = path.join(__dirname, "data");
+	if (!fs.existsSync(channelsDir)) {
+		fs.mkdirSync(channelsDir);
+	}
 	const channels = fs.readdirSync(channelsDir);
 	channels.forEach((channelId) => {
 		const timersDir = path.join(channelsDir, channelId, "timers");
