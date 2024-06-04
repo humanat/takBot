@@ -90,6 +90,9 @@ module.exports = {
 				.setName("theme")
 				.setDescription("Theme name or JSON")
 				.setAutocomplete(true)
+		)
+		.addBooleanOption((option) =>
+			option.setName("blind").setDescription("Never show the board")
 		),
 	async execute(interaction, client) {
 		const options = interaction.options;
@@ -170,6 +173,9 @@ module.exports = {
 				theme = getTheme(interaction);
 			}
 
+			// Blind mode
+			const blind = options.getBoolean("blind");
+
 			// Create game data
 			const gameData = {
 				player1Id: player1.id,
@@ -186,6 +192,7 @@ module.exports = {
 			}
 			const gameId = createPtnFile(gameData);
 			gameData.gameId = gameId;
+			if (blind) gameData.blind = true;
 
 			let destination = interaction;
 			let channelName = `${gameData.player1}-🆚-${gameData.player2}`;

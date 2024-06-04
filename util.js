@@ -233,6 +233,7 @@ module.exports = {
 			gameData.turnMarker === "2" ? "b" : "w"
 		}.png`;
 		canvas.komi = gameData.komi;
+		canvas.blind = gameData.blind;
 		return canvas;
 	},
 
@@ -711,15 +712,20 @@ module.exports = {
 	// Functions to send to Discord
 
 	async sendPngToDiscord(msg, canvas, message) {
-		const attachment = new Discord.AttachmentBuilder(canvas.toBuffer(), {
-			name: canvas.filename,
-			description: `${canvas.id} ${canvas.komi}`,
-		});
+		const files = [];
+		if (!canvas.blind) {
+			files.push(
+				new Discord.AttachmentBuilder(canvas.toBuffer(), {
+					name: canvas.filename,
+					description: `${canvas.id} ${canvas.komi}`,
+				})
+			);
+		}
 
 		try {
 			const content = {
 				content: message,
-				files: [attachment],
+				files,
 			};
 			if (!msg.type || !msg.reply) {
 				// Normal message

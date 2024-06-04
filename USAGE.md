@@ -8,6 +8,7 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 - `tps` _(optional):_ Begins the game from the specified board state.
 - `opening` _(optional, default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
 - `theme` _(optional, default `discord`):_ Uses the specified theme.
+- `blind` _(optional, boolean):_ Never show the board.
 
 **Standalone commands:**
 
