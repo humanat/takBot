@@ -11,19 +11,20 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 
 **Standalone commands:**
 
-- `rematch` to swap seats and play again using the same game settings.
-- `themes` to see a list of themes for the board and pieces.
-- `theme` to set the theme for the current channel.
-- `undo` to step back one move in the game. Only available until the next player makes their move.
+- `datetime` to display a date/time in everyone's local time zone.
+- `delete` to delete the current game channel.
+- `end` to cancel the current game.
 - `history` to see a list of finished games and their IDs. Specify a page number to see older games.
+- `info` to display information about the current game (useful for bots).
 - `link` to get a ptn.ninja link for the current game, or the game specified by ID.
 - `redraw` to re-send the last board of the current game.
-- `resign` to forfeit the current game.
-- `end` to cancel the current game.
-- `delete` to delete the current game channel.
+- `rematch` to swap seats and play again using the same game settings.
 - `reminder` to set a reminder ping. Takes one or more time arguments (e.g. `/reminder 1h 30m`).
+- `resign` to forfeit the current game.
 - `rng` to generate a random number betwen 1 and some other number.
-- `datetime` to display a date/time in everyone's local time zone.
+- `theme` to set the theme for the current channel.
+- `themes` to see a list of themes for the board and pieces.
+- `undo` to step back one move in the game. Only available until the next player makes their move.
 
 **Note:**
 
