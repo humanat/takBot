@@ -67,7 +67,7 @@ client.on(Discord.Events.InteractionCreate, async (interaction) => {
 
 		const focusedOption = interaction.options.getFocused(true);
 		if (focusedOption.name === "theme") {
-			const focusedValue = focusedOption.value.toLowerCase();
+			const focusedValue = focusedOption.value.trim().toLowerCase();
 			return interaction.respond(
 				themeIDs
 					.filter((choice) => choice.startsWith(focusedValue))
