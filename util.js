@@ -224,6 +224,7 @@ module.exports = {
 			theme,
 			bgAlpha: 0,
 			padding: false,
+			font: "roboto",
 		};
 		if (ply) {
 			options.ply = ply;
