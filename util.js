@@ -422,6 +422,12 @@ module.exports = {
 		if (gameData.initialTPS) {
 			data = `[TPS "${gameData.initialTPS}"]` + data;
 		}
+		if (gameData.caps) {
+			data += `[caps "${gameData.caps}"]`;
+		}
+		if (gameData.flats) {
+			data += `[flats "${gameData.flats}"]`;
+		}
 		try {
 			fs.writeFileSync(filePath, data);
 		} catch (err) {

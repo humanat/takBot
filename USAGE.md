@@ -7,6 +7,8 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 - `color` _(optional):_ Seats the message author as White (Player 1) or Black (Player 2).
 - `tps` _(optional):_ Begins the game from the specified board state.
 - `opening` _(optional, default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
+- `caps` _(optional):_ Override the number of cap stones per player.
+- `flats` _(optional):_ Override the number of flat stones per player.
 - `theme` _(optional, default `discord`):_ Uses the specified theme.
 - `blind` _(optional, boolean):_ Never show the board.
 

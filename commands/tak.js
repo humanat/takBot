@@ -85,6 +85,18 @@ module.exports = {
 					{ name: "No Swap", value: "no-swap" }
 				)
 		)
+		.addIntegerOption((option) =>
+			option
+				.setName("caps")
+				.setDescription("Cap stones per player")
+				.setMinValue(0)
+		)
+		.addIntegerOption((option) =>
+			option
+				.setName("flats")
+				.setDescription("Flat stones per player")
+				.setMinValue(3)
+		)
 		.addStringOption((option) =>
 			option
 				.setName("theme")
@@ -161,6 +173,10 @@ module.exports = {
 				return sendMessage(interaction, "Invalid opening.", true);
 			}
 
+			// Piece counts
+			const caps = options.getInteger("caps");
+			const flats = options.getInteger("flats");
+
 			// Theme
 			let theme = options.getString("theme");
 			if (theme) {
@@ -192,6 +208,9 @@ module.exports = {
 			}
 			const gameId = createPtnFile(gameData);
 			gameData.gameId = gameId;
+
+			if (caps !== null) gameData.caps = caps;
+			if (flats !== null) gameData.flats = flats;
 			if (blind) gameData.blind = true;
 
 			let destination = interaction;
