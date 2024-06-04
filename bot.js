@@ -3,18 +3,19 @@ const fs = require("fs");
 const path = require("path");
 const auth = require("./auth.json");
 
-const { cleanupFiles, handleMove, sendMessage, validPly } = require("./util");
+const {
+	cleanupFiles,
+	createClient,
+	handleMove,
+	sendMessage,
+	setTimer,
+	validPly,
+} = require("./util");
 
 const { themes } = require("./TPS-Ninja/src/themes");
 const themeIDs = Object.values(themes).map(({ id }) => id);
 
-const client = new Discord.Client({
-	intents: [
-		Discord.GatewayIntentBits.Guilds,
-		Discord.GatewayIntentBits.GuildMessages,
-		Discord.GatewayIntentBits.MessageContent,
-	],
-});
+const client = createClient();
 
 // Load slash commands
 
@@ -39,6 +40,25 @@ for (const file of commandFiles) {
 
 client.on(Discord.Events.ClientReady, () => {
 	console.log(`Logged in as ${client.user.tag}!`);
+
+	// Restore timers
+	const channelsDir = path.join(__dirname, "data");
+	const channels = fs.readdirSync(channelsDir);
+	channels.forEach((channelId) => {
+		const timersDir = path.join(channelsDir, channelId, "timers");
+		if (fs.existsSync(timersDir)) {
+			const timerFiles = fs.readdirSync(timersDir);
+			timerFiles.forEach((timerFilename) => {
+				const timerPath = path.join(timersDir, timerFilename);
+				const timer = require(timerPath);
+				if (timer && timer.timestamp && timer.type) {
+					setTimer(timer.type, timer.timestamp, channelId, timer.playerId);
+				} else {
+					console.log("Invalid timer:", timerPath);
+				}
+			});
+		}
+	});
 });
 
 client.on(Discord.Events.InteractionCreate, async (interaction) => {
@@ -98,7 +118,7 @@ client.on(Discord.Events.MessageCreate, (msg) => {
 });
 
 client.on(Discord.Events.ChannelDelete, function (channel) {
-	return cleanupFiles({ channel }, true);
+	return cleanupFiles(channel.id, true);
 });
 
 client.on(Discord.Events.Error, (error) => {

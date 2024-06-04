@@ -8,11 +8,7 @@ module.exports = {
 	async execute(interaction) {
 		const gameData = getGameData(interaction);
 		if (gameData) {
-			return sendMessage(
-				interaction,
-				"```json\n" + JSON.stringify(gameData, null, 2) + "\n```",
-				true
-			);
+			return sendMessage(interaction, JSON.stringify(gameData), true);
 		} else if (!isGameOngoing(interaction)) {
 			return sendMessage(
 				interaction,

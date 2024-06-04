@@ -28,7 +28,7 @@ module.exports = {
 		} else if (theme) {
 			const gameData = getGameData(interaction);
 			const isOngoing = isGameOngoing(interaction);
-			if (!isPlayer(interaction, gameData)) {
+			if (!isPlayer(interaction.member.id, gameData)) {
 				return sendMessage(
 					interaction,
 					`Only the ${

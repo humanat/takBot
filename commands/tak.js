@@ -13,6 +13,7 @@ const {
 	saveGameData,
 	sendMessage,
 	sendPngToDiscord,
+	setInactiveTimer,
 	setTheme,
 } = require("../util");
 
@@ -232,6 +233,7 @@ module.exports = {
 			sendPngToDiscord({ channel }, canvas, message);
 
 			clearDeleteTimer(interaction);
+			setInactiveTimer({ channel }, gameData, canvas);
 		}
 	},
 };

@@ -3,7 +3,7 @@ const {
 	addPlyToPtnFile,
 	addToHistoryFile,
 	cleanupFiles,
-	clearReminderTimer,
+	clearInactiveTimer,
 	getGameData,
 	getLink,
 	renameChannel,
@@ -38,7 +38,7 @@ module.exports = {
 		let nextPlayer = gameData.player1Id;
 		if (gameData.turnMarker === "1") nextPlayer = gameData.player2Id;
 		addPlyToPtnFile(gameData.gameId, result);
-		cleanupFiles(interaction);
+		cleanupFiles(interaction.channel.id);
 		if (gameData.gameId) {
 			addToHistoryFile({
 				gameId: gameData.gameId,
@@ -55,7 +55,7 @@ module.exports = {
 				gameData.gameId
 			}](${getLink(gameData.gameId)})`
 		);
-		clearReminderTimer(interaction);
+		clearInactiveTimer(interaction);
 		setDeleteTimer(interaction);
 		return renameChannel(interaction, false);
 	},

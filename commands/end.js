@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require("discord.js");
 const {
 	cleanupFiles,
-	clearReminderTimer,
+	clearInactiveTimer,
 	deletePtnFile,
 	getGameData,
 	getLink,
@@ -31,9 +31,9 @@ module.exports = {
 				"Here's a link to the game:\n" + getLink(gameData.gameId)
 			);
 		}
-		cleanupFiles(interaction);
+		cleanupFiles(interaction.channel.id);
 		deletePtnFile(gameData);
-		clearReminderTimer(interaction);
+		clearInactiveTimer(interaction);
 		setDeleteTimer(interaction);
 		await sendMessage(
 			interaction,

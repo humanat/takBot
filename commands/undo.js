@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const {
-	clearReminderTimer,
+	clearInactiveTimer,
 	deleteLastTurn,
 	drawBoard,
 	getGameData,
@@ -10,7 +10,7 @@ const {
 	isPlayer,
 	sendMessage,
 	sendPngToDiscord,
-	setReminderTimer,
+	setInactiveTimer,
 } = require("../util");
 
 module.exports = {
@@ -35,7 +35,7 @@ module.exports = {
 			);
 		}
 
-		if (!isPlayer(interaction, gameData)) {
+		if (!isPlayer(interaction.member.id, gameData)) {
 			return;
 		}
 
@@ -57,8 +57,8 @@ module.exports = {
 		const canvas = drawBoard(gameData, getTheme(interaction));
 		const message = "Undo complete!\n" + getTurnMessage(gameData, canvas);
 
-		clearReminderTimer(interaction);
-		setReminderTimer(interaction, gameData, canvas);
+		clearInactiveTimer(interaction);
+		setInactiveTimer(interaction, gameData, canvas);
 
 		return sendPngToDiscord(interaction, canvas, message);
 	},

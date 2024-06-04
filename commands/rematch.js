@@ -10,7 +10,7 @@ const {
 	saveGameData,
 	sendMessage,
 	sendPngToDiscord,
-	setReminderTimer,
+	setInactiveTimer,
 } = require("../util");
 
 module.exports = {
@@ -31,7 +31,7 @@ module.exports = {
 				"There's still a game in progress!",
 				true
 			);
-		} else if (!isPlayer(interaction, gameData)) {
+		} else if (!isPlayer(interaction.member.id, gameData)) {
 			return sendMessage(
 				interaction,
 				"Only the previous players can rematch.",
@@ -77,6 +77,6 @@ module.exports = {
 		sendPngToDiscord(interaction, canvas, message);
 
 		clearDeleteTimer(interaction);
-		setReminderTimer(interaction, gameData, canvas);
+		setInactiveTimer(interaction, gameData, canvas);
 	},
 };

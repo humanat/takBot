@@ -7,11 +7,25 @@ const { TPStoCanvas, parseTPS } = require("./TPS-Ninja/src");
 
 // Persisting variables
 
+let client;
 const defaultTheme = "discord";
-let deleteTimers = [];
-let reminderTimers = [];
+const INACTIVE_TIMER_MS = 864e5;
+const deleteTimers = {};
+const inactiveTimers = {};
+const reminderTimers = {};
 
 module.exports = {
+	createClient() {
+		client = new Discord.Client({
+			intents: [
+				Discord.GatewayIntentBits.Guilds,
+				Discord.GatewayIntentBits.GuildMessages,
+				Discord.GatewayIntentBits.MessageContent,
+			],
+		});
+		return client;
+	},
+
 	// Helper functions
 
 	validPly(cmd) {
@@ -26,7 +40,7 @@ module.exports = {
 		let gameData = module.exports.getGameData(msg);
 		if (!gameData) return;
 
-		if (!module.exports.isPlayer(msg, gameData)) {
+		if (!module.exports.isPlayer(msg.author.id, gameData)) {
 			return;
 		}
 
@@ -72,12 +86,12 @@ module.exports = {
 			const message = module.exports.getTurnMessage(gameData, canvas, ply);
 			await module.exports.sendPngToDiscord(msg, canvas, message);
 
-			module.exports.clearReminderTimer(msg);
-			module.exports.setReminderTimer(msg, gameData, canvas);
+			module.exports.clearInactiveTimer(msg);
+			module.exports.setInactiveTimer(msg, gameData, canvas);
 		} else {
 			// Game is over
 			const result = canvas.id;
-			module.exports.cleanupFiles(msg);
+			module.exports.cleanupFiles(msg.channel.id);
 			if (gameData.gameId) {
 				module.exports.addToHistoryFile({
 					gameId: gameData.gameId,
@@ -95,7 +109,7 @@ module.exports = {
 					gameData.gameId
 				}](${module.exports.getLink(gameData.gameId)})`
 			);
-			module.exports.clearReminderTimer(msg);
+			module.exports.clearInactiveTimer(msg);
 			module.exports.setDeleteTimer(msg);
 			return module.exports.renameChannel(msg, false);
 		}
@@ -195,9 +209,8 @@ module.exports = {
 		}
 	},
 
-	isPlayer(msg, gameData) {
-		const uid = msg.author ? msg.author.id : msg.member.id;
-		return uid == gameData.player1Id || uid == gameData.player2Id;
+	isPlayer(playerId, gameData) {
+		return playerId === gameData.player1Id || playerId === gameData.player2Id;
 	},
 
 	drawBoard(gameData, theme, ply) {
@@ -293,9 +306,8 @@ module.exports = {
 		return message;
 	},
 
-	getReminderMessage(gameData, canvas) {
-		const nextPlayer = gameData[`player${canvas.player}Id`];
-		return `It's been a while since your last move. Please take your turn soon, <@${nextPlayer}>.`;
+	getReminderMessage(playerId) {
+		return `It's been a while since your last move. Please take your turn soon, <@${playerId}>.`;
 	},
 
 	deleteLastTurn(msg, gameData) {
@@ -337,12 +349,8 @@ module.exports = {
 		);
 	},
 
-	cleanupFiles(msg, channelDeleted = false) {
-		const channelDir = path.join(
-			__dirname,
-			"data",
-			msg.channelId || msg.channel.id
-		);
+	cleanupFiles(channelId, channelDeleted = false) {
+		const channelDir = path.join(__dirname, "data", channelId);
 		try {
 			if (channelDeleted) {
 				fs.rmSync(channelDir, { recursive: true, force: true });
@@ -356,6 +364,18 @@ module.exports = {
 					});
 				}
 			}
+			// Clean up timers
+			if (channelId in deleteTimers) {
+				module.exports.clearTimer("delete", channelId);
+			}
+			if (channelId in inactiveTimers) {
+				module.exports.clearTimer("inactive", channelId);
+			}
+			Object.keys(reminderTimers).forEach((id) => {
+				if (id.startsWith(channelId + ".")) {
+					module.exports.clearTimer("reminder", channelId, id.split(".")[1]);
+				}
+			});
 		} catch (err) {
 			console.error(err);
 		}
@@ -507,40 +527,45 @@ module.exports = {
 		}
 	},
 
-	async handleDelete(msg) {
-		if (module.exports.isGameOngoing(msg)) {
+	async handleDelete(channelId, playerId) {
+		const channel = await client.channels.fetch(channelId);
+		if (!channel) {
+			console.log("Channel not found:", channelId);
+			return;
+		}
+		if (module.exports.isGameOngoing({ channelId })) {
 			return module.exports.sendMessage(
-				msg,
+				{ channel },
 				"There is an ongoing game in this channel! If you're sure you about this, please use `/end` and try again.",
 				true
 			);
 		} else {
-			if (!module.exports.isGameChannel(msg)) {
+			if (!module.exports.isGameChannel({ channelId })) {
 				return module.exports.sendMessage(
-					msg,
+					{ channel },
 					"I can't delete this channel.",
 					true
 				);
 			} else {
-				const gameData = module.exports.getGameData(msg);
-				if (!module.exports.isPlayer(msg, gameData)) {
+				const gameData = module.exports.getGameData({ channelId });
+				if (!module.exports.isPlayer(playerId, gameData)) {
 					return module.exports.sendMessage(
-						msg,
+						{ channel },
 						"Only the previous players may delete the channel.",
 						true
 					);
 				} else {
 					try {
 						await module.exports.sendMessage(
-							msg,
+							{ channel },
 							"Deleting channel. Please be patient, as this sometimes takes a while.",
 							true
 						);
-						return msg.channel.delete();
+						return channel.delete();
 					} catch (err) {
 						console.error(err);
 						return module.exports.sendMessage(
-							msg,
+							{ channel },
 							"I wasn't able to delete the channel.",
 							true
 						);
@@ -550,36 +575,137 @@ module.exports = {
 		}
 	},
 
+	saveTimer(type, timestamp, channelId, playerId) {
+		try {
+			const timersDir = path.join(__dirname, "data", channelId, "timers");
+			const timerPath = path.join(
+				timersDir,
+				type === "reminder" ? `${type}.${timestamp}.json` : `${type}.json`
+			);
+			fs.mkdirSync(timersDir, { recursive: true });
+			fs.writeFileSync(
+				timerPath,
+				JSON.stringify({ type, timestamp, playerId })
+			);
+			module.exports.setTimer(type, timestamp, channelId, playerId);
+		} catch (err) {
+			console.error(`Failed to save timer ${timerPath}:`, err);
+		}
+	},
+
+	clearTimer(type, channelId, timestamp) {
+		const timerDir = path.join(__dirname, "data", channelId, "timers");
+		let timerId;
+		let filePath;
+		switch (type) {
+			case "delete":
+				timerId = deleteTimers[channelId];
+				if (timerId) {
+					clearTimeout(timerId);
+					delete deleteTimers[timerId];
+				}
+				filePath = path.join(timerDir, `${type}.json`);
+				break;
+			case "inactive":
+				timerId = inactiveTimers[channelId];
+				if (timerId) {
+					clearTimeout(timerId);
+					delete inactiveTimers[timerId];
+				}
+				filePath = path.join(timerDir, `${type}.json`);
+				break;
+			case "reminder":
+				timerId = reminderTimers[`${channelId}.${timestamp}`];
+				if (timerId) {
+					clearTimeout(timerId);
+					delete reminderTimers[`${channelId}.${timestamp}`];
+				}
+				filePath = path.join(timerDir, `${type}.${timestamp}.json`);
+				break;
+		}
+		if (filePath) {
+			try {
+				fs.unlinkSync(filePath);
+			} catch (err) {
+				// Assume file doesn't exist
+			}
+		}
+	},
+
+	async setTimer(type, timestamp, channelId, playerId) {
+		let channel;
+		try {
+			channel = await client.channels.fetch(channelId);
+		} catch (err) {
+			console.log("Channel not found:", channelId);
+			return false;
+		}
+		const delay = timestamp * 1e3 - new Date().getTime();
+		switch (type) {
+			case "delete":
+				deleteTimers[channelId] = setTimeout(
+					module.exports.handleDelete,
+					delay,
+					channelId,
+					playerId
+				);
+				break;
+			case "inactive":
+				inactiveTimers[channelId] = setTimeout(() => {
+					module.exports.sendMessage(
+						{ channel },
+						module.exports.getReminderMessage(playerId),
+						true
+					);
+					timestamp = (new Date().getTime() + INACTIVE_TIMER_MS) / 1e3;
+					module.exports.saveTimer(type, timestamp, channelId, playerId);
+				}, delay);
+				break;
+			case "reminder":
+				reminderTimers[`${channelId}.${timestamp}`] = setTimeout(() => {
+					module.exports.sendMessage(
+						{ channel },
+						`Hey <@${playerId}>, you wanted me to remind you about this channel.`,
+						true
+					);
+					module.exports.clearTimer(type, channelId, timestamp);
+				}, delay);
+				break;
+		}
+		return true;
+	},
+
 	async setDeleteTimer(msg) {
-		const delay = 864e5;
+		const delay = INACTIVE_TIMER_MS;
 		const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
 		await msg.channel.send(
-			`This channel will self destruct <t:${timestamp}:R> unless a new game is started.`
+			`This channel will self-destruct <t:${timestamp}:R> unless a new game is started.`
 		);
-		let timerId = setTimeout(module.exports.handleDelete, delay, msg);
-		deleteTimers[msg.channelId || msg.channel.id] = timerId;
+		module.exports.saveTimer(
+			"delete",
+			timestamp,
+			msg.channelId || msg.channel.id,
+			msg.author ? msg.author.id : msg.member.id
+		);
 	},
 
-	async clearDeleteTimer(msg) {
-		let timerId = deleteTimers[msg.channelId || msg.channel.id];
-		if (timerId) {
-			clearTimeout(timerId);
-			deleteTimers.splice(deleteTimers.indexOf(timerId), 1);
-		}
+	clearDeleteTimer(msg) {
+		module.exports.clearTimer("delete", msg.channelId || msg.channel.id);
 	},
 
-	async setReminderTimer(msg, gameData, canvas) {
-		let message = module.exports.getReminderMessage(gameData, canvas);
-		let timerId = setInterval(module.exports.sendMessage, 864e5, msg, message);
-		reminderTimers[msg.channelId || msg.channel.id] = timerId;
+	setInactiveTimer(msg, gameData, canvas) {
+		const delay = INACTIVE_TIMER_MS;
+		const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
+		module.exports.saveTimer(
+			"inactive",
+			timestamp,
+			msg.channelId || msg.channel.id,
+			gameData[`player${canvas.player}Id`]
+		);
 	},
 
-	async clearReminderTimer(msg) {
-		let timerId = reminderTimers[msg.channelId || msg.channel.id];
-		if (timerId) {
-			clearInterval(timerId);
-			reminderTimers.splice(reminderTimers.indexOf(timerId), 1);
-		}
+	clearInactiveTimer(msg) {
+		module.exports.clearTimer("inactive", msg.channelId || msg.channel.id);
 	},
 
 	// Functions to send to Discord
