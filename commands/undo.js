@@ -30,7 +30,7 @@ module.exports = {
 		if (!isGameOngoing(interaction)) {
 			return sendMessage(
 				interaction,
-				"The game is over, but you can start a new game using the --tps flag!",
+				"The game is over, but you can start a new game using the `tps` option to resume from the last position!",
 				true
 			);
 		}

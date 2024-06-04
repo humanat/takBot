@@ -87,7 +87,10 @@ client.on(Discord.Events.InteractionCreate, async (interaction) => {
 
 client.on(Discord.Events.MessageCreate, (msg) => {
 	let message = msg.content.trim();
-	if (message.length >= 4 && message.substring(0, 4).toLowerCase() === "!tak") {
+	if (
+		message.length >= 4 &&
+		["!tak", "!rng"].includes(message.substring(0, 4).toLowerCase())
+	) {
 		sendMessage(msg, "Please use my new slash commands!");
 	} else if (validPly(message)) {
 		return handleMove(msg, message);

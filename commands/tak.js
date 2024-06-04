@@ -65,14 +65,17 @@ module.exports = {
 					{ name: "-4.5", value: -4.5 }
 				)
 		)
-		.addStringOption((option) =>
-			option.setName("tps").setDescription("Initial TPS")
-		)
 		.addIntegerOption((option) =>
 			option
 				.setName("color")
 				.setDescription("Choose your color")
-				.addChoices({ name: "White (Player 1)", value: 1 }, { name: "Black (Player 2)", value: 2 })
+				.addChoices(
+					{ name: "White (Player 1)", value: 1 },
+					{ name: "Black (Player 2)", value: 2 }
+				)
+		)
+		.addStringOption((option) =>
+			option.setName("tps").setDescription("Initial TPS")
 		)
 		.addStringOption((option) =>
 			option
