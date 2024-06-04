@@ -1,7 +1,5 @@
 const { ChannelType, SlashCommandBuilder } = require("discord.js");
 const { parseTPS, parseTheme } = require("../TPS-Ninja/src");
-const { themes } = require("../TPS-Ninja/src/themes");
-const themeIDs = Object.values(themes).map(({ id }) => id);
 const {
 	clearDeleteTimer,
 	createPtnFile,
@@ -189,16 +187,17 @@ module.exports = {
 			const gameId = createPtnFile(gameData);
 			gameData.gameId = gameId;
 
-			let channel = interaction.channel;
+			let destination = interaction;
 			let channelName = `${gameData.player1}-🆚-${gameData.player2}`;
 			if (!isGameChannel(interaction)) {
 				// Make a new channel
 				try {
-					channel = await interaction.guild.channels.create({
+					let channel = await interaction.guild.channels.create({
 						name: channelName,
 						type: ChannelType.GuildText,
 						parent: interaction.channel.parent,
 					});
+					destination = { channel };
 					await sendMessage(interaction, `<#${channel.id}>`);
 				} catch (err) {
 					console.error(err);
@@ -225,15 +224,15 @@ module.exports = {
 				);
 			}
 
-			saveGameData({ channel }, { tps: canvas.id, gameData });
+			saveGameData(destination, { tps: canvas.id, gameData });
 			if (options.getString("theme")) {
-				setTheme({ channel }, theme);
+				setTheme(destination, theme);
 			}
 			const message = getTurnMessage(gameData, canvas);
-			sendPngToDiscord({ channel }, canvas, message);
+			sendPngToDiscord(destination, canvas, message);
 
 			clearDeleteTimer(interaction);
-			setInactiveTimer({ channel }, gameData, canvas);
+			setInactiveTimer(destination, gameData, canvas);
 		}
 	},
 };
