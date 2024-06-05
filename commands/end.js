@@ -25,20 +25,16 @@ module.exports = {
 		}
 
 		const gameData = getGameData(interaction);
+		let message = "The game in this channel has been removed.";
 		if (gameData.hl) {
-			await sendMessage(
-				interaction,
-				"Here's a link to the game:\n" + getLink(gameData.gameId)
-			);
+			message +=
+				"\nHere's a link to the unfinished game:\n" + getLink(gameData.gameId);
 		}
 		cleanupFiles(interaction.channel.id);
 		deletePtnFile(gameData);
+		await sendMessage(interaction, message);
 		clearInactiveTimer(interaction);
 		setDeleteTimer(interaction);
-		await sendMessage(
-			interaction,
-			"Ongoing game in this channel has been removed."
-		);
 		return renameChannel(interaction, false);
 	},
 };
