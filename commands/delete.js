@@ -6,6 +6,6 @@ module.exports = {
 		.setName("delete")
 		.setDescription("Delete the current game channel."),
 	async execute(interaction) {
-		return handleDelete(interaction.channelId, interaction.member.id);
+		return handleDelete(interaction, interaction.member.id);
 	},
 };

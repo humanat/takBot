@@ -535,37 +535,37 @@ module.exports = {
 		}
 	},
 
-	async handleDelete(channelId, playerId) {
-		const channel = await client.channels.fetch(channelId);
+	async handleDelete(msg, playerId) {
+		const channel = msg.channel;
 		if (!channel) {
-			console.log("Channel not found:", channelId);
+			console.log("Channel not found:", channel.id);
 			return;
 		}
-		if (module.exports.isGameOngoing({ channelId })) {
+		if (module.exports.isGameOngoing(msg)) {
 			return module.exports.sendMessage(
-				{ channel },
+				msg,
 				"There is an ongoing game in this channel! If you're sure you about this, please use `/end` and try again.",
 				true
 			);
 		} else {
-			if (!module.exports.isGameChannel({ channelId })) {
+			if (!module.exports.isGameChannel(msg)) {
 				return module.exports.sendMessage(
-					{ channel },
+					msg,
 					"I can't delete this channel.",
 					true
 				);
 			} else {
-				const gameData = module.exports.getGameData({ channelId });
+				const gameData = module.exports.getGameData(msg);
 				if (!module.exports.isPlayer(playerId, gameData)) {
 					return module.exports.sendMessage(
-						{ channel },
+						msg,
 						"Only the previous players may delete the channel.",
 						true
 					);
 				} else {
 					try {
 						await module.exports.sendMessage(
-							{ channel },
+							msg,
 							"Deleting channel. Please be patient, as this sometimes takes a while.",
 							true
 						);
@@ -573,7 +573,7 @@ module.exports = {
 					} catch (err) {
 						console.error(err);
 						return module.exports.sendMessage(
-							{ channel },
+							msg,
 							"I wasn't able to delete the channel.",
 							true
 						);
@@ -654,7 +654,7 @@ module.exports = {
 				deleteTimers[channelId] = setTimeout(
 					module.exports.handleDelete,
 					delay,
-					channelId,
+					{ channel },
 					playerId
 				);
 				break;
