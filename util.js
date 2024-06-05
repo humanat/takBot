@@ -665,7 +665,9 @@ module.exports = {
 						module.exports.getReminderMessage(playerId),
 						true
 					);
-					timestamp = (new Date().getTime() + INACTIVE_TIMER_MS) / 1e3;
+					timestamp = Math.round(
+						(new Date().getTime() + INACTIVE_TIMER_MS) / 1e3
+					);
 					module.exports.saveTimer(type, timestamp, channelId, playerId);
 				}, delay);
 				break;
