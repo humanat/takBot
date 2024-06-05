@@ -45,22 +45,24 @@ client.on(Discord.Events.ClientReady, () => {
 	const channelsDir = path.join(__dirname, "data");
 	if (!fs.existsSync(channelsDir)) {
 		fs.mkdirSync(channelsDir);
+		return;
 	}
 	const channels = fs.readdirSync(channelsDir);
 	channels.forEach((channelId) => {
 		const timersDir = path.join(channelsDir, channelId, "timers");
-		if (fs.existsSync(timersDir)) {
-			const timerFiles = fs.readdirSync(timersDir);
-			timerFiles.forEach((timerFilename) => {
-				const timerPath = path.join(timersDir, timerFilename);
-				const timer = require(timerPath);
-				if (timer && timer.timestamp && timer.type) {
-					setTimer(timer.type, timer.timestamp, channelId, timer.playerId);
-				} else {
-					console.log("Invalid timer:", timerPath);
-				}
-			});
+		if (!fs.existsSync(timersDir)) {
+			return;
 		}
+		const timerFiles = fs.readdirSync(timersDir);
+		timerFiles.forEach((timerFilename) => {
+			const timerPath = path.join(timersDir, timerFilename);
+			const timer = require(timerPath);
+			if (timer && timer.timestamp && timer.type) {
+				setTimer(timer.type, timer.timestamp, channelId, timer.playerId);
+			} else {
+				console.log("Invalid timer:", timerPath);
+			}
+		});
 	});
 });
 
