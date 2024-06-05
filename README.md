@@ -7,8 +7,8 @@
 5.  Run `pushd TPS-Ninja && npm i && popd`
 6.  Run `cp auth.json.template auth.json; cp results.db.template results.db`
 7.  Make your own application through Discord (<https://discord.com/developers/applications>)
-8.  Copy the token from the Bot page of the Discord portal to your application
-9.  Paste the token in `auth.json`
+8.  Copy the token from the Bot page and paste it in `auth.json` after `token`.
+9.  Copy the Application ID from the General Information page and paste it in `auth.json` after `clientId`.
 10. Run `node deploy-commands`
 11. Run `node bot` (`Ctrl+C` to end)
 12. Invite your bot to your own Discord server by generating an invite link from the OAuth2 page of the Discord portal
