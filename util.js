@@ -4,6 +4,26 @@ const path = require("path");
 const crypto = require("crypto");
 const { compressToEncodedURIComponent } = require("lz-string");
 const { TPStoCanvas, parseTPS } = require("./TPS-Ninja/src");
+const { Ply } = require("./TPS-Ninja/src/Ply");
+
+Ply.prototype.toString = function () {
+	let minDistribution, minPieceCount;
+	if (this.movement) {
+		minDistribution =
+			this.pieceCount === this.distribution ? "" : this.distribution;
+		minPieceCount = this.pieceCount === "1" ? "" : this.pieceCount;
+	}
+	return (
+		(minPieceCount || "") +
+		(this.specialPiece || "") +
+		this.column +
+		this.row +
+		(this.direction || "") +
+		(minDistribution || "") +
+		(this.wallSmash || "") +
+		(this.evalText || "")
+	);
+};
 
 // Persisting variables
 
@@ -57,7 +77,7 @@ module.exports = {
 
 		let canvas;
 		try {
-			ply = ply.replace("’", "'").replace("”", '"');
+			ply = new Ply(ply.replace("’", "'").replace("”", '"')).toString();
 			canvas = module.exports.drawBoard(
 				gameData,
 				module.exports.getTheme(msg),
