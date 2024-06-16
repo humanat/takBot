@@ -18,8 +18,7 @@ module.exports = {
 			const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
 			sendMessage(
 				interaction,
-				`OK, I will ping you in this channel <t:${timestamp}:R>.`,
-				true
+				`OK, I will ping you in this channel <t:${timestamp}:R>.`
 			);
 			saveTimer(
 				"reminder",
