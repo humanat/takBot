@@ -53,11 +53,7 @@ module.exports = {
 			}
 		} else {
 			theme = getTheme(interaction);
-			return sendMessage(
-				interaction,
-				theme[0] === "{" ? `\`\`\`\n${theme}\n\`\`\`` : theme,
-				true
-			);
+			return sendMessage(interaction, theme, true);
 		}
 	},
 };
