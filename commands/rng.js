@@ -15,6 +15,6 @@ module.exports = {
   async execute(interaction) {
     const max = interaction.options.getInteger("max");
     const rand = 1 + Math.floor(Math.random() * max);
-    return sendMessage(interaction, rand.toString(), true);
+    return sendMessage(interaction, rand.toString());
   },
 };
