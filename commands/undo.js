@@ -16,7 +16,7 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("undo")
-    .setDescription("Undo your last move."),
+    .setDescription("Undo your previous move."),
   async execute(interaction) {
     let gameData = getGameData(interaction);
     if (!gameData) {

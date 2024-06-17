@@ -26,7 +26,7 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 - `rng` to generate a random number betwen 1 and some other number.
 - `theme` to set the theme for the current channel.
 - `themes` to see a list of themes for the board and pieces.
-- `undo` to step back one move in the game. Only available until the next player makes their move.
+- `undo` to undo your previous move.
 
 **Note:**
 

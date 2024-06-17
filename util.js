@@ -564,7 +564,7 @@ module.exports = {
     if (module.exports.isGameOngoing(msg)) {
       return module.exports.sendMessage(
         msg,
-        "There is an ongoing game in this channel! If you're sure you about this, please use `/end` and try again.",
+        "There is an ongoing game in this channel! If you're sure you about this, please use `/end` first, then try again.",
         true
       );
     } else {

@@ -17,7 +17,7 @@ module.exports = {
     if (!isGameOngoing(interaction)) {
       return sendMessage(
         interaction,
-        "I couldn't find an ongoing game in this channel.",
+        "There is no ongoing game in this channel.",
         true
       );
     }
