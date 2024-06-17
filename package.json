@@ -1,6 +1,5 @@
 {
 	"dependencies": {
-		"chrono-node": "^2.6.3",
 		"discord.js": "^14.15.2",
 		"lz-string": "^1.5.0",
 		"timestring": "^6.0.0"

@@ -14,7 +14,6 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 
 **Standalone commands:**
 
-- `datetime` to display a date/time in everyone's local time zone.
 - `delete` to delete the current game channel.
 - `end` to cancel the current game.
 - `history` to see a list of finished games and their IDs. Specify a page number to see older games.
