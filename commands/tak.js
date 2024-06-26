@@ -104,6 +104,22 @@ module.exports = {
         .setAutocomplete(true)
     )
     .addBooleanOption((option) =>
+      option.setName("flat-counts").setDescription("Show flat counts (default)")
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("stack-counts")
+        .setDescription("Show stack counts (default)")
+    )
+    .addBooleanOption((option) =>
+      option
+        .setName("road-connections")
+        .setDescription("Show road connections (default)")
+    )
+    .addBooleanOption((option) =>
+      option.setName("allow-links").setDescription("Allow links (default)")
+    )
+    .addBooleanOption((option) =>
       option.setName("blind").setDescription("Never show the board")
     ),
   async execute(interaction, client) {
@@ -189,7 +205,11 @@ module.exports = {
         theme = getTheme(interaction);
       }
 
-      // Blind mode
+      // Toggles mode
+      const flatCounts = options.getBoolean("flat-counts");
+      const stackCounts = options.getBoolean("stack-counts");
+      const showRoads = options.getBoolean("road-connections");
+      const allowLinks = options.getBoolean("allow-links");
       const blind = options.getBoolean("blind");
 
       // Create game data
@@ -211,6 +231,10 @@ module.exports = {
 
       if (caps !== null) gameData.caps = caps;
       if (flats !== null) gameData.flats = flats;
+      if (flatCounts === false) gameData.flatCounts = false;
+      if (stackCounts === false) gameData.stackCounts = false;
+      if (showRoads === false) gameData.showRoads = false;
+      if (allowLinks === false) gameData.allowLinks = false;
       if (blind) gameData.blind = true;
 
       let destination = interaction;

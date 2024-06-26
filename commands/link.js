@@ -25,6 +25,12 @@ module.exports = {
           "You must use the game ID to get a link for a completed game. See `/history` to get the game ID.",
           true
         );
+      } else if (gameData.allowLinks === false) {
+        return sendMessage(
+          interaction,
+          "Requests for links have been disallowed for this game.",
+          true
+        );
       }
       gameId = gameData.gameId;
     }

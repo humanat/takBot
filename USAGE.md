@@ -2,15 +2,19 @@
 
 Use `/tak @opponent` to start a new game. You can specify any of the following:
 
-- `size` _(optional, default `6`):_ Valid values are `3` through `8`.
-- `komi` _(optional, default `0`):_ A flat-score bonus for the second player. Valid values are -`4.5` through `4.5`.
-- `color` _(optional):_ Seats the message author as White (Player 1) or Black (Player 2).
-- `tps` _(optional):_ Begins the game from the specified board state.
-- `opening` _(optional, default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
-- `caps` _(optional):_ Override the number of cap stones per player.
-- `flats` _(optional):_ Override the number of flat stones per player.
-- `theme` _(optional, default `discord`):_ Uses the specified theme.
-- `blind` _(optional, boolean):_ Never show the board.
+- `size` _(default `6`):_ Valid values are `3` through `8`.
+- `komi` _(default `0`):_ A flat-score bonus for the second player. Valid values are -`4.5` through `4.5`.
+- `color` Seats the message author as White (Player 1) or Black (Player 2).
+- `tps`: Begins the game from the specified board state.
+- `opening` _(default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
+- `caps`: Override the number of cap stones per player.
+- `flats`: Override the number of flat stones per player.
+- `theme` _(default `discord`):_ Uses the specified theme.
+- `flat-counts` _(default `true`)_: Show flat counts
+- `stack-counts` _(default `true`)_: Show stack counts
+- `road-connections` _(default `true`)_: Show road connections
+- `allow-links` _(default `true`)_: Allow requests for ptn.ninja links
+- `blind` _(boolean):_ Never show the board.
 
 **Standalone commands:**
 
