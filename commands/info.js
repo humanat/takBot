@@ -12,7 +12,7 @@ module.exports = {
     } else if (!isGameOngoing(interaction)) {
       return sendMessage(
         interaction,
-        "The game is over, but you can start a new game using the --tps flag!",
+        "There is no ongoing game in this channel.",
         true
       );
     } else {
