@@ -1,9 +1,6 @@
 node_modules/
-images/
 data/
 ptn/
-channel-themes/
 auth.json
 results.db
 .DS_Store
-notes.txt
