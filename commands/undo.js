@@ -36,7 +36,11 @@ module.exports = {
     }
 
     if (!isPlayer(interaction.member.id, gameData)) {
-      return;
+      return sendMessage(
+        interaction,
+        "This isn't your game.",
+        true
+      );
     }
 
     if (
