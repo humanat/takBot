@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const {
+  clearInactiveTimer,
   drawBoard,
   getGameData,
   getTheme,
@@ -7,6 +8,7 @@ const {
   isGameOngoing,
   sendMessage,
   sendPngToDiscord,
+  setInactiveTimer,
 } = require("../util");
 
 module.exports = {
@@ -24,6 +26,10 @@ module.exports = {
     const gameData = getGameData(interaction);
     const canvas = drawBoard(gameData, getTheme(interaction));
     const message = getTurnMessage(gameData, canvas);
-    await sendPngToDiscord(interaction, canvas, message);
+
+    clearInactiveTimer(interaction);
+    setInactiveTimer(interaction, gameData, canvas);
+
+    return sendPngToDiscord(interaction, canvas, message);
   },
 };
