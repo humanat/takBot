@@ -8,7 +8,11 @@ module.exports = {
   async execute(interaction) {
     const gameData = getGameData(interaction);
     if (gameData) {
-      return sendMessage(interaction, JSON.stringify(gameData), true);
+      if(gameData.allowLinks === false){
+        return sendMessage(interaction, "Sorry, this command is unavailable when links are disallowed.", true);
+      } else {
+        return sendMessage(interaction, JSON.stringify(gameData), true);
+      }
     } else if (!isGameOngoing(interaction)) {
       return sendMessage(
         interaction,
