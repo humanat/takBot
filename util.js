@@ -29,7 +29,7 @@ Ply.prototype.toString = function () {
 
 let client;
 const defaultTheme = "discord";
-const INACTIVE_TIMER_MS = 864e5;
+const DELETE_TIMER_MS = 864e5;
 const deleteTimers = {};
 const inactiveTimers = {};
 const reminderTimers = {};
@@ -603,7 +603,8 @@ module.exports = {
     }
   },
 
-  saveTimer(type, timestamp, channelId, playerId) {
+  saveTimer(timer, channelId) {
+    const { type, timestamp, playerId, interval } = timer;
     try {
       const timersDir = path.join(__dirname, "data", channelId, "timers");
       const timerPath = path.join(
@@ -613,9 +614,12 @@ module.exports = {
       fs.mkdirSync(timersDir, { recursive: true });
       fs.writeFileSync(
         timerPath,
-        JSON.stringify({ type, timestamp, playerId })
+        JSON.stringify({ type, timestamp, playerId, interval })
       );
-      module.exports.setTimer(type, timestamp, channelId, playerId);
+      module.exports.setTimer(
+        { type, timestamp, playerId, interval },
+        channelId
+      );
     } catch (err) {
       console.error(`Failed to save timer ${timerPath}:`, err);
     }
@@ -660,7 +664,8 @@ module.exports = {
     }
   },
 
-  async setTimer(type, timestamp, channelId, playerId) {
+  async setTimer(timer, channelId) {
+    let { type, timestamp, playerId, interval } = timer;
     let channel;
     try {
       channel = await client.channels.fetch(channelId);
@@ -685,10 +690,14 @@ module.exports = {
             module.exports.getReminderMessage(playerId),
             true
           );
-          timestamp = Math.round(
-            (new Date().getTime() + INACTIVE_TIMER_MS) / 1e3
+          if (!interval) {
+            interval = DELETE_TIMER_MS;
+          }
+          timestamp = Math.round((new Date().getTime() + interval) / 1e3);
+          module.exports.saveTimer(
+            { type, timestamp, playerId, interval },
+            channelId
           );
-          module.exports.saveTimer(type, timestamp, channelId, playerId);
         }, delay);
         break;
       case "reminder":
@@ -706,16 +715,18 @@ module.exports = {
   },
 
   async setDeleteTimer(msg) {
-    const delay = INACTIVE_TIMER_MS;
+    const delay = DELETE_TIMER_MS;
     const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
     await msg.channel.send(
       `This channel will self-destruct <t:${timestamp}:R> unless a new game is started.`
     );
     module.exports.saveTimer(
-      "delete",
-      timestamp,
-      msg.channelId || msg.channel.id,
-      msg.author ? msg.author.id : msg.member.id
+      {
+        type: "delete",
+        timestamp,
+        playerId: msg.author ? msg.author.id : msg.member.id,
+      },
+      msg.channelId || msg.channel.id
     );
   },
 
@@ -724,13 +735,36 @@ module.exports = {
   },
 
   setInactiveTimer(msg, gameData, canvas) {
-    const delay = INACTIVE_TIMER_MS;
-    const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
+    const interval = gameData.inactiveInterval || DELETE_TIMER_MS;
+    if (interval < 0) {
+      // Reminders disabled
+      return;
+    }
+    const timestamp = Math.round((new Date().getTime() + interval) / 1e3);
     module.exports.saveTimer(
-      "inactive",
-      timestamp,
-      msg.channelId || msg.channel.id,
-      gameData[`player${canvas.player}Id`]
+      {
+        type: "inactive",
+        timestamp,
+        playerId: gameData[`player${canvas.player}Id`],
+        interval,
+      },
+      msg.channelId || msg.channel.id
+    );
+  },
+
+  async setReminder(msg, delay) {
+    const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
+    await module.exports.sendMessage(
+      msg,
+      `OK, I will ping you in this channel <t:${timestamp}:R>.`
+    );
+    saveTimer(
+      {
+        type: "reminder",
+        timestamp,
+        playerId: msg.author ? msg.author.id : msg.member.id,
+      },
+      msg.channelId || msg.channel.id
     );
   },
 

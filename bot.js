@@ -61,7 +61,7 @@ client.on(Discord.Events.ClientReady, () => {
       const timerPath = path.join(timersDir, timerFilename);
       const timer = require(timerPath);
       if (timer && timer.timestamp && timer.type) {
-        setTimer(timer.type, timer.timestamp, channelId, timer.playerId);
+        setTimer(timer, channelId);
       } else {
         console.log("Invalid timer:", timerPath);
       }

@@ -9,6 +9,7 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 - `opening` _(default `swap`):_ Specify an opening variation. Valid values are `swap` and `no-swap`.
 - `caps`: Override the number of cap stones per player.
 - `flats`: Override the number of flat stones per player.
+- `inactive-interval` Specifies the time interval between inactivity reminders.
 - `theme` _(default `discord`):_ Uses the specified theme.
 - `flat-counts` _(default `true`)_: Show flat counts
 - `stack-counts` _(default `true`)_: Show stack counts
