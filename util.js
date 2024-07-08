@@ -714,6 +714,12 @@ module.exports = {
         );
         break;
       case "inactive":
+        if (!seed) {
+          seed = Math.random() * 1e4;
+        }
+        if (!index) {
+          index = 0;
+        }
         inactiveTimers[channelId] = setTimeout(() => {
           module.exports.sendMessage(
             { channel },
@@ -778,8 +784,6 @@ module.exports = {
         timestamp,
         playerId: gameData[`player${canvas.player}Id`],
         interval,
-        seed: Math.random() * 1e4,
-        index: 0,
       },
       msg.channelId || msg.channel.id
     );
