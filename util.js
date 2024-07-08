@@ -6,6 +6,107 @@ const { compressToEncodedURIComponent } = require("lz-string");
 const { TPStoCanvas, parseTPS } = require("./TPS-Ninja/src");
 const { Ply } = require("./TPS-Ninja/src/Ply");
 
+// Persisting variables
+
+let client;
+const defaultTheme = "discord";
+const DELETE_TIMER_MS = 864e5;
+const deleteTimers = {};
+const inactiveTimers = {};
+const reminderTimers = {};
+
+// Non-exported functions
+
+function tagDateTime() {
+  const pad = (num) => {
+    return (num < 9 ? "0" : "") + num;
+  };
+  const now = new Date();
+  return (
+    `[Date "${now.getUTCFullYear()}.${pad(now.getUTCMonth() + 1)}.${pad(
+      now.getUTCDate()
+    )}"]` +
+    `[Time "${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(
+      now.getUTCSeconds()
+    )}"]`
+  );
+}
+
+function getLastFilename(msg) {
+  let tpsDir = path.join(
+    __dirname,
+    "data",
+    msg.channelId || msg.channel.id,
+    "tps"
+  );
+  if (!fs.existsSync(tpsDir)) {
+    return false;
+  }
+  let files = fs.readdirSync(tpsDir);
+  files.sort();
+  return files && files.length
+    ? path.join(tpsDir, files[files.length - 1])
+    : false;
+}
+
+function createTimer(timer, channelId) {
+  const { type, timestamp, playerId, interval } = timer;
+  try {
+    const timersDir = path.join(__dirname, "data", channelId, "timers");
+    const timerPath = path.join(
+      timersDir,
+      type === "reminder" ? `${type}.${timestamp}.json` : `${type}.json`
+    );
+    fs.mkdirSync(timersDir, { recursive: true });
+    fs.writeFileSync(
+      timerPath,
+      JSON.stringify({ type, timestamp, playerId, interval })
+    );
+    module.exports.setTimer({ type, timestamp, playerId, interval }, channelId);
+  } catch (err) {
+    console.error(`Failed to save timer ${timerPath}:`, err);
+  }
+}
+
+function clearTimer(type, channelId, timestamp) {
+  const timerDir = path.join(__dirname, "data", channelId, "timers");
+  let timerId;
+  let filePath;
+  switch (type) {
+    case "delete":
+      timerId = deleteTimers[channelId];
+      if (timerId) {
+        clearTimeout(timerId);
+        delete deleteTimers[timerId];
+      }
+      filePath = path.join(timerDir, `${type}.json`);
+      break;
+    case "inactive":
+      timerId = inactiveTimers[channelId];
+      if (timerId) {
+        clearTimeout(timerId);
+        delete inactiveTimers[timerId];
+      }
+      filePath = path.join(timerDir, `${type}.json`);
+      break;
+    case "reminder":
+      timerId = reminderTimers[`${channelId}.${timestamp}`];
+      if (timerId) {
+        clearTimeout(timerId);
+        delete reminderTimers[`${channelId}.${timestamp}`];
+      }
+      filePath = path.join(timerDir, `${type}.${timestamp}.json`);
+      break;
+  }
+  if (filePath) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      // Assume file doesn't exist
+    }
+  }
+}
+
 Ply.prototype.toString = function () {
   let minDistribution, minPieceCount;
   if (this.movement) {
@@ -25,14 +126,7 @@ Ply.prototype.toString = function () {
   );
 };
 
-// Persisting variables
-
-let client;
-const defaultTheme = "discord";
-const DELETE_TIMER_MS = 864e5;
-const deleteTimers = {};
-const inactiveTimers = {};
-const reminderTimers = {};
+// Exported functions
 
 module.exports = {
   createClient() {
@@ -135,25 +229,16 @@ module.exports = {
     }
   },
 
-  getLastFilename(msg) {
-    let tpsDir = path.join(
-      __dirname,
-      "data",
-      msg.channelId || msg.channel.id,
-      "tps"
-    );
-    if (!fs.existsSync(tpsDir)) {
-      return false;
-    }
-    let files = fs.readdirSync(tpsDir);
-    files.sort();
-    return files && files.length
-      ? path.join(tpsDir, files[files.length - 1])
-      : false;
-  },
-
   getLink(gameId) {
-    let ptn = module.exports.getPtnFromFile(gameId);
+    let ptn;
+    let filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
+    try {
+      ptn = fs.readFileSync(filePath, "utf8");
+    } catch (err) {
+      if (!err.message.includes("no such file or directory")) {
+        console.error(err);
+      }
+    }
     if (!ptn) {
       throw "Game not found";
     } else {
@@ -179,7 +264,7 @@ module.exports = {
 
       // Get the latest board state
       if (fs.existsSync(tpsDir)) {
-        const filename = module.exports.getLastFilename(msg);
+        const filename = getLastFilename(msg);
         [data.tps, data.hl] = fs.readFileSync(filename, "utf8").split("\n");
         const parsedTPS = parseTPS(data.tps);
         data.turnMarker = String(parsedTPS.player);
@@ -328,15 +413,14 @@ module.exports = {
     return message;
   },
 
-  getReminderMessage(playerId) {
-    return `It's been a while since your last move. Please take your turn soon, <@${playerId}>.`;
-  },
-
   deleteLastTurn(msg, gameData) {
     try {
-      fs.unlinkSync(module.exports.getLastFilename(msg));
+      fs.unlinkSync(getLastFilename(msg));
       if (gameData.gameId) {
-        module.exports.removeLastPlyFromPtnFile(gameData.gameId);
+        let filePath = path.join(__dirname, "ptn", `${gameData.gameId}.ptn`);
+        let data = fs.readFileSync(filePath, "utf8");
+        data = data.substring(0, data.lastIndexOf(" "));
+        fs.writeFileSync(filePath, data);
       }
     } catch (err) {
       console.error(err);
@@ -388,34 +472,19 @@ module.exports = {
       }
       // Clean up timers
       if (channelId in deleteTimers) {
-        module.exports.clearTimer("delete", channelId);
+        clearTimer("delete", channelId);
       }
       if (channelId in inactiveTimers) {
-        module.exports.clearTimer("inactive", channelId);
+        clearTimer("inactive", channelId);
       }
       Object.keys(reminderTimers).forEach((id) => {
         if (id.startsWith(channelId + ".")) {
-          module.exports.clearTimer("reminder", channelId, id.split(".")[1]);
+          clearTimer("reminder", channelId, id.split(".")[1]);
         }
       });
     } catch (err) {
       console.error(err);
     }
-  },
-
-  tagDateTime() {
-    const pad = (num) => {
-      return (num < 9 ? "0" : "") + num;
-    };
-    const now = new Date();
-    return (
-      `[Date "${now.getUTCFullYear()}.${pad(now.getUTCMonth() + 1)}.${pad(
-        now.getUTCDate()
-      )}"]` +
-      `[Time "${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(
-        now.getUTCSeconds()
-      )}"]`
-    );
   },
 
   createPtnFile(gameData) {
@@ -429,7 +498,7 @@ module.exports = {
     let gameId = Date.now() + crypto.randomBytes(2).toString("hex");
     let filePath = path.join(ptnDir, `${gameId}.ptn`);
     let data =
-      module.exports.tagDateTime() +
+      tagDateTime() +
       `[Site "https://github.com/humanat/takBot"]` +
       `[Player1 "${gameData.player1}"]` +
       `[Player2 "${gameData.player2}"]` +
@@ -480,28 +549,6 @@ module.exports = {
     }
   },
 
-  removeLastPlyFromPtnFile(gameId) {
-    let filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
-    try {
-      let data = fs.readFileSync(filePath, "utf8");
-      data = data.substring(0, data.lastIndexOf(" "));
-      fs.writeFileSync(filePath, data);
-    } catch (err) {
-      console.error(err);
-    }
-  },
-
-  getPtnFromFile(gameId) {
-    let filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
-    try {
-      return fs.readFileSync(filePath, "utf8");
-    } catch (err) {
-      if (!err.message.includes("no such file or directory")) {
-        console.error(err);
-      }
-    }
-  },
-
   addToHistoryFile({ gameId, player1, player2, komi, opening, result }) {
     let historyFilename = path.join(__dirname, "results.db");
     let ptnFilename = path.join(__dirname, "ptn", `${gameId}.ptn`);
@@ -513,7 +560,7 @@ module.exports = {
       let lastTag = data.indexOf("] ") + 1;
       data =
         data.substring(0, lastTag) +
-        module.exports.tagDateTime() +
+        tagDateTime() +
         `[Result "${result}"]` +
         data.substring(lastTag) +
         " " +
@@ -603,67 +650,6 @@ module.exports = {
     }
   },
 
-  saveTimer(timer, channelId) {
-    const { type, timestamp, playerId, interval } = timer;
-    try {
-      const timersDir = path.join(__dirname, "data", channelId, "timers");
-      const timerPath = path.join(
-        timersDir,
-        type === "reminder" ? `${type}.${timestamp}.json` : `${type}.json`
-      );
-      fs.mkdirSync(timersDir, { recursive: true });
-      fs.writeFileSync(
-        timerPath,
-        JSON.stringify({ type, timestamp, playerId, interval })
-      );
-      module.exports.setTimer(
-        { type, timestamp, playerId, interval },
-        channelId
-      );
-    } catch (err) {
-      console.error(`Failed to save timer ${timerPath}:`, err);
-    }
-  },
-
-  clearTimer(type, channelId, timestamp) {
-    const timerDir = path.join(__dirname, "data", channelId, "timers");
-    let timerId;
-    let filePath;
-    switch (type) {
-      case "delete":
-        timerId = deleteTimers[channelId];
-        if (timerId) {
-          clearTimeout(timerId);
-          delete deleteTimers[timerId];
-        }
-        filePath = path.join(timerDir, `${type}.json`);
-        break;
-      case "inactive":
-        timerId = inactiveTimers[channelId];
-        if (timerId) {
-          clearTimeout(timerId);
-          delete inactiveTimers[timerId];
-        }
-        filePath = path.join(timerDir, `${type}.json`);
-        break;
-      case "reminder":
-        timerId = reminderTimers[`${channelId}.${timestamp}`];
-        if (timerId) {
-          clearTimeout(timerId);
-          delete reminderTimers[`${channelId}.${timestamp}`];
-        }
-        filePath = path.join(timerDir, `${type}.${timestamp}.json`);
-        break;
-    }
-    if (filePath) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (err) {
-        // Assume file doesn't exist
-      }
-    }
-  },
-
   async setTimer(timer, channelId) {
     let { type, timestamp, playerId, interval } = timer;
     let channel;
@@ -687,17 +673,14 @@ module.exports = {
         inactiveTimers[channelId] = setTimeout(() => {
           module.exports.sendMessage(
             { channel },
-            module.exports.getReminderMessage(playerId),
+            `It's been a while since your last move. Please take your turn soon, <@${playerId}>.`,
             true
           );
           if (!interval) {
             interval = DELETE_TIMER_MS;
           }
           timestamp = Math.round((new Date().getTime() + interval) / 1e3);
-          module.exports.saveTimer(
-            { type, timestamp, playerId, interval },
-            channelId
-          );
+          createTimer({ type, timestamp, playerId, interval }, channelId);
         }, delay);
         break;
       case "reminder":
@@ -707,7 +690,7 @@ module.exports = {
             `Hey <@${playerId}>, you wanted me to remind you about this channel.`,
             true
           );
-          module.exports.clearTimer(type, channelId, timestamp);
+          clearTimer(type, channelId, timestamp);
         }, delay);
         break;
     }
@@ -720,7 +703,7 @@ module.exports = {
     await msg.channel.send(
       `This channel will self-destruct <t:${timestamp}:R> unless a new game is started.`
     );
-    module.exports.saveTimer(
+    createTimer(
       {
         type: "delete",
         timestamp,
@@ -731,7 +714,7 @@ module.exports = {
   },
 
   clearDeleteTimer(msg) {
-    module.exports.clearTimer("delete", msg.channelId || msg.channel.id);
+    clearTimer("delete", msg.channelId || msg.channel.id);
   },
 
   setInactiveTimer(msg, gameData, canvas) {
@@ -741,7 +724,7 @@ module.exports = {
       return;
     }
     const timestamp = Math.round((new Date().getTime() + interval) / 1e3);
-    module.exports.saveTimer(
+    createTimer(
       {
         type: "inactive",
         timestamp,
@@ -752,13 +735,17 @@ module.exports = {
     );
   },
 
+  clearInactiveTimer(msg) {
+    clearTimer("inactive", msg.channelId || msg.channel.id);
+  },
+
   async setReminder(msg, delay) {
     const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
     await module.exports.sendMessage(
       msg,
       `OK, I will ping you in this channel <t:${timestamp}:R>.`
     );
-    saveTimer(
+    createTimer(
       {
         type: "reminder",
         timestamp,
@@ -766,10 +753,6 @@ module.exports = {
       },
       msg.channelId || msg.channel.id
     );
-  },
-
-  clearInactiveTimer(msg) {
-    module.exports.clearTimer("inactive", msg.channelId || msg.channel.id);
   },
 
   // Functions to send to Discord
