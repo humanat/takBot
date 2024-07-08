@@ -6,11 +6,34 @@ const { compressToEncodedURIComponent } = require("lz-string");
 const { TPStoCanvas, parseTPS } = require("./TPS-Ninja/src");
 const { Ply } = require("./TPS-Ninja/src/Ply");
 
+// Constants
+const DELETE_TIMER_MS = 864e5;
+const INACTIVE_MESSAGES = [
+  "It's been a while since your last move. Please take your turn soon, @player.",
+  "Ready to jump back in, @player? The game is waiting for your move!",
+  "Hey, @player. Just wanted to let you know it's still your turn.",
+  "@player the game awaits your next move. What are you gonna do?",
+  "Hey @player, we're eager to see your next move. You got this!",
+  "Hope all is well, @player! It's your turn when you're ready.",
+  "@player, the game needs you! Make your move when you can.",
+  "Still thinking, @player? Don't stress it, just have fun!",
+  "Long time no see, @player! Don't forget, it's your turn.",
+  "The game's still here, @player! It's your turn to play.",
+  "@player, time to pick up where we left off! Your move.",
+  "@player, it's your turn! Let's keep the game rolling.",
+  "Just a friendly reminder, @player: it's your turn!",
+  "We've missed you, @player! Time to make your move.",
+  "Hey @player, we've been waiting! It's your turn.",
+  "It's your turn, @player! What's your next move?",
+  "Your turn, @player! Let's see what you've got.",
+  "@player, it's your turn. Ready to make a move?",
+  "Don't forget, @player, it's your turn now!",
+];
+
 // Persisting variables
 
 let client;
 const defaultTheme = "discord";
-const DELETE_TIMER_MS = 864e5;
 const deleteTimers = {};
 const inactiveTimers = {};
 const reminderTimers = {};
@@ -50,7 +73,7 @@ function getLastFilename(msg) {
 }
 
 function createTimer(timer, channelId) {
-  const { type, timestamp, playerId, interval } = timer;
+  const { type, timestamp } = timer;
   try {
     const timersDir = path.join(__dirname, "data", channelId, "timers");
     const timerPath = path.join(
@@ -58,11 +81,8 @@ function createTimer(timer, channelId) {
       type === "reminder" ? `${type}.${timestamp}.json` : `${type}.json`
     );
     fs.mkdirSync(timersDir, { recursive: true });
-    fs.writeFileSync(
-      timerPath,
-      JSON.stringify({ type, timestamp, playerId, interval })
-    );
-    module.exports.setTimer({ type, timestamp, playerId, interval }, channelId);
+    fs.writeFileSync(timerPath, JSON.stringify(timer));
+    module.exports.setTimer(timer, channelId);
   } catch (err) {
     console.error(`Failed to save timer ${timerPath}:`, err);
   }
@@ -105,6 +125,30 @@ function clearTimer(type, channelId, timestamp) {
       // Assume file doesn't exist
     }
   }
+}
+
+function getInactiveMessage(playerId, seed, index) {
+  const messages = shuffle(INACTIVE_MESSAGES, seed);
+  return messages[index % messages.length].replace("@player", `<@${playerId}>`);
+}
+
+function shuffle(array, seed) {
+  array = array.concat();
+  let m = array.length;
+  let i;
+
+  while (m) {
+    i = Math.floor(seedRandom(seed) * m--);
+    [array[m], array[i]] = [array[i], array[m]];
+    ++seed;
+  }
+
+  return array;
+}
+
+function seedRandom(seed) {
+  var x = Math.sin(seed++) * 1e4;
+  return x - Math.floor(x);
 }
 
 Ply.prototype.toString = function () {
@@ -651,7 +695,7 @@ module.exports = {
   },
 
   async setTimer(timer, channelId) {
-    let { type, timestamp, playerId, interval } = timer;
+    let { type, timestamp, playerId, interval, seed, index } = timer;
     let channel;
     try {
       channel = await client.channels.fetch(channelId);
@@ -673,14 +717,18 @@ module.exports = {
         inactiveTimers[channelId] = setTimeout(() => {
           module.exports.sendMessage(
             { channel },
-            `It's been a while since your last move. Please take your turn soon, <@${playerId}>.`,
+            getInactiveMessage(playerId, seed, index),
             true
           );
           if (!interval) {
             interval = DELETE_TIMER_MS;
           }
           timestamp = Math.round((new Date().getTime() + interval) / 1e3);
-          createTimer({ type, timestamp, playerId, interval }, channelId);
+          index = (index + 1) % INACTIVE_MESSAGES.length;
+          createTimer(
+            { type, timestamp, playerId, interval, seed, index },
+            channelId
+          );
         }, delay);
         break;
       case "reminder":
@@ -730,6 +778,8 @@ module.exports = {
         timestamp,
         playerId: gameData[`player${canvas.player}Id`],
         interval,
+        seed: Math.random() * 1e4,
+        index: 0,
       },
       msg.channelId || msg.channel.id
     );
