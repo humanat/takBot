@@ -36,7 +36,7 @@ module.exports = {
     }
 
     if (!isPlayer(interaction.member.id, gameData)) {
-      return;
+      return sendMessage(interaction, "This isn't your game.", true);
     }
 
     if (
@@ -47,7 +47,7 @@ module.exports = {
     ) {
       return sendMessage(
         interaction,
-        "You cannot undo a move that is not your own.",
+        "You cannot undo your opponent's move.",
         true
       );
     }

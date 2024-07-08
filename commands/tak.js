@@ -97,6 +97,18 @@ module.exports = {
         .setDescription("Flat stones per player")
         .setMinValue(3)
     )
+    .addIntegerOption((option) =>
+      option
+        .setName("inactive-interval")
+        .setDescription("Configure inactivity reminders")
+        .addChoices(
+          { name: "1 Day (default)", value: 864e5 },
+          { name: "2 Days", value: 1728e5 },
+          { name: "3 Days", value: 2592e5 },
+          { name: "1 Week", value: 6048e5 },
+          { name: "Disabled", value: -1 }
+        )
+    )
     .addStringOption((option) =>
       option
         .setName("theme")
@@ -193,6 +205,9 @@ module.exports = {
       const caps = options.getInteger("caps");
       const flats = options.getInteger("flats");
 
+      // Inactivity Reminder Interval
+      const inactiveInterval = options.getInteger("inactive-interval") || 864e5;
+
       // Theme
       let theme = options.getString("theme");
       if (theme) {
@@ -205,7 +220,7 @@ module.exports = {
         theme = getTheme(interaction);
       }
 
-      // Toggles mode
+      // Toggles
       const flatCounts = options.getBoolean("flat-counts");
       const stackCounts = options.getBoolean("stack-counts");
       const showRoads = options.getBoolean("road-connections");
@@ -221,6 +236,7 @@ module.exports = {
         size,
         komi,
         opening,
+        inactiveInterval,
       };
       if (tpsParsed) {
         gameData.initialTPS = tps;

@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const timestring = require("timestring");
-const { sendMessage, saveTimer } = require("../util");
+const { sendMessage, setReminder } = require("../util");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -15,17 +15,7 @@ module.exports = {
   async execute(interaction) {
     try {
       const delay = timestring(interaction.options.getString("delay")) * 1e3;
-      const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
-      sendMessage(
-        interaction,
-        `OK, I will ping you in this channel <t:${timestamp}:R>.`
-      );
-      saveTimer(
-        "reminder",
-        timestamp,
-        interaction.channelId,
-        interaction.member.id
-      );
+      setReminder(interaction, delay);
     } catch (err) {
       console.error(err);
       sendMessage(
