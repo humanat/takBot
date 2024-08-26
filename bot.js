@@ -6,7 +6,10 @@ const auth = require("./auth.json");
 const {
   cleanupFiles,
   createClient,
+  deletePtnFile,
+  getGameData,
   handleMove,
+  isGameOngoing,
   sendMessage,
   setTimer,
   validPly,
@@ -58,7 +61,7 @@ client.on(Discord.Events.ClientReady, () => {
       const timerPath = path.join(timersDir, timerFilename);
       const timer = require(timerPath);
       if (timer && timer.timestamp && timer.type) {
-        setTimer(timer.type, timer.timestamp, channelId, timer.playerId);
+        setTimer(timer, channelId);
       } else {
         console.log("Invalid timer:", timerPath);
       }
@@ -123,7 +126,14 @@ client.on(Discord.Events.MessageCreate, (msg) => {
 });
 
 client.on(Discord.Events.ChannelDelete, function (channel) {
-  return cleanupFiles(channel.id, true);
+  const gameData = getGameData({ channel });
+  const isOngoing = isGameOngoing({ channel });
+  if (gameData) {
+    cleanupFiles(channel.id, true);
+    if (isOngoing) {
+      deletePtnFile(gameData);
+    }
+  }
 });
 
 client.on(Discord.Events.Error, (error) => {
