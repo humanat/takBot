@@ -666,29 +666,20 @@ module.exports = {
           true
         );
       } else {
-        const gameData = module.exports.getGameData(msg);
-        if (!module.exports.isPlayer(playerId, gameData)) {
-          return module.exports.sendMessage(
+        try {
+          await module.exports.sendMessage(
             msg,
-            "Only the previous players may delete the channel.",
+            "Deleting channel. Please be patient, as this sometimes takes a while.",
             true
           );
-        } else {
-          try {
-            await module.exports.sendMessage(
-              msg,
-              "Deleting channel. Please be patient, as this sometimes takes a while.",
-              true
-            );
-            return channel.delete();
-          } catch (err) {
-            console.error(err);
-            return module.exports.sendMessage(
-              msg,
-              "I wasn't able to delete the channel.",
-              true
-            );
-          }
+          return channel.delete();
+        } catch (err) {
+          console.error(err);
+          return module.exports.sendMessage(
+            msg,
+            "Sorry, I wasn't able to delete the channel; something went wrong.",
+            true
+          );
         }
       }
     }
