@@ -37,7 +37,6 @@ module.exports = {
 
     let nextPlayer = gameData.player1Id;
     if (gameData.turnMarker === "1") nextPlayer = gameData.player2Id;
-    addPlyToPtnFile(gameData.gameId, result);
     cleanupFiles(interaction.channel.id);
     if (gameData.gameId) {
       addToHistoryFile({
