@@ -18,7 +18,7 @@ const {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("tak")
-    .setDescription("Begins a game of Tak against the specified opponent.")
+    .setDescription("Begin a game of Tak against the specified opponent.")
     .addUserOption((option) =>
       option
         .setName("opponent")
