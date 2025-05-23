@@ -6,6 +6,7 @@ const {
   getGameData,
   getLink,
   isGameOngoing,
+  isPlayer,
   renameChannel,
   sendMessage,
   setDeleteTimer,
@@ -25,6 +26,15 @@ module.exports = {
     }
 
     const gameData = getGameData(interaction);
+
+    if (!isPlayer(interaction.member.id, gameData)) {
+      return sendMessage(
+        interaction,
+        "Only the previous players may end the game.",
+        true
+      );
+    }
+
     let message = "The game in this channel has been removed.";
     if (gameData.hl) {
       message +=

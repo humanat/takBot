@@ -22,7 +22,8 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 - `delete` to delete the current game channel
 - `end` to cancel the current game
 - `history` to see a list of finished games and their IDs. Specify a page number to see older games
-- `info` to display information about the current game (useful for bots)
+- `info` to display information about the current game
+- `ptn` to display ptn of the current game
 - `link` to get a ptn.ninja link for the current game, or the game specified by ID
 - `redraw` to re-send the last board of the current game
 - `rematch` to swap seats and play again using the same game settings

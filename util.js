@@ -48,10 +48,10 @@ function tagDateTime() {
   return (
     `[Date "${now.getUTCFullYear()}.${pad(now.getUTCMonth() + 1)}.${pad(
       now.getUTCDate()
-    )}"]` +
+    )}"]\n` +
     `[Time "${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(
       now.getUTCSeconds()
-    )}"]`
+    )}"]\n`
   );
 }
 
@@ -154,6 +154,7 @@ function seedRandom(seed) {
 Ply.prototype.toString = function () {
   let minDistribution, minPieceCount;
   if (this.movement) {
+    this.specialPiece = "";
     minDistribution =
       this.pieceCount === this.distribution ? "" : this.distribution;
     minPieceCount = this.pieceCount === "1" ? "" : this.pieceCount;
@@ -273,7 +274,7 @@ module.exports = {
     }
   },
 
-  getLink(gameId) {
+  getPlies(gameId) {
     let ptn;
     let filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
@@ -286,8 +287,14 @@ module.exports = {
     if (!ptn) {
       throw "Game not found";
     } else {
-      return `<https://ptn.ninja/${compressToEncodedURIComponent(ptn)}>`;
+      return ptn;
     }
+  },
+
+  getLink(gameId) {
+    return `<https://ptn.ninja/${compressToEncodedURIComponent(
+      module.exports.getPlies(gameId)
+    )}>`;
   },
 
   getGameData(msg) {
@@ -543,24 +550,24 @@ module.exports = {
     let filePath = path.join(ptnDir, `${gameId}.ptn`);
     let data =
       tagDateTime() +
-      `[Site "https://github.com/humanat/takBot"]` +
-      `[Player1 "${gameData.player1}"]` +
-      `[Player2 "${gameData.player2}"]` +
-      `[Size "${gameData.size}"]`;
+      `[Site "https://github.com/humanat/takBot"]\n` +
+      `[Player1 "${gameData.player1}"]\n` +
+      `[Player2 "${gameData.player2}"]\n` +
+      `[Size "${gameData.size}"]\n`;
     if (gameData.komi) {
-      data += `[Komi "${gameData.komi}"]`;
+      data += `[Komi "${gameData.komi}"]\n`;
     }
     if (gameData.opening != "swap") {
-      data += `[Opening "${gameData.opening}"]`;
+      data += `[Opening "${gameData.opening}"]\n`;
     }
     if (gameData.initialTPS) {
-      data = `[TPS "${gameData.initialTPS}"]` + data;
+      data += `[TPS "${gameData.initialTPS}"]\n`;
     }
     if (gameData.caps) {
-      data += `[caps "${gameData.caps}"]`;
+      data += `[caps "${gameData.caps}"]\n`;
     }
     if (gameData.flats) {
-      data += `[flats "${gameData.flats}"]`;
+      data += `[flats "${gameData.flats}"]\n`;
     }
     try {
       fs.writeFileSync(filePath, data);
@@ -586,7 +593,7 @@ module.exports = {
     const filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
       let data = fs.readFileSync(filePath, "utf8");
-      data += " " + ply;
+      data += "\n" + ply;
       fs.writeFileSync(filePath, data);
     } catch (err) {
       console.error(err);
@@ -601,13 +608,13 @@ module.exports = {
       fs.appendFileSync(historyFilename, resultString);
       // Update PTN
       let data = fs.readFileSync(ptnFilename, "utf8");
-      let lastTag = data.indexOf("] ") + 1;
+      let lastTag = data.indexOf("]\n\n") + 2;
       data =
         data.substring(0, lastTag) +
         tagDateTime() +
-        `[Result "${result}"]` +
+        `[Result "${result}"]\n` +
         data.substring(lastTag) +
-        " " +
+        "\n" +
         result;
       fs.writeFileSync(ptnFilename, data);
     } catch (err) {
@@ -666,29 +673,20 @@ module.exports = {
           true
         );
       } else {
-        const gameData = module.exports.getGameData(msg);
-        if (!module.exports.isPlayer(playerId, gameData)) {
-          return module.exports.sendMessage(
+        try {
+          await module.exports.sendMessage(
             msg,
-            "Only the previous players may delete the channel.",
+            "Deleting channel. Please be patient, as this sometimes takes a while.",
             true
           );
-        } else {
-          try {
-            await module.exports.sendMessage(
-              msg,
-              "Deleting channel. Please be patient, as this sometimes takes a while.",
-              true
-            );
-            return channel.delete();
-          } catch (err) {
-            console.error(err);
-            return module.exports.sendMessage(
-              msg,
-              "I wasn't able to delete the channel.",
-              true
-            );
-          }
+          return channel.delete();
+        } catch (err) {
+          console.error(err);
+          return module.exports.sendMessage(
+            msg,
+            "Sorry, I wasn't able to delete the channel; something went wrong.",
+            true
+          );
         }
       }
     }
