@@ -154,6 +154,7 @@ function seedRandom(seed) {
 Ply.prototype.toString = function () {
   let minDistribution, minPieceCount;
   if (this.movement) {
+    this.specialPiece = "";
     minDistribution =
       this.pieceCount === this.distribution ? "" : this.distribution;
     minPieceCount = this.pieceCount === "1" ? "" : this.pieceCount;
