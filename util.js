@@ -593,7 +593,7 @@ module.exports = {
     const filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
       let data = fs.readFileSync(filePath, "utf8");
-      data += "\n" + ply;
+      data += " " + ply;
       fs.writeFileSync(filePath, data);
     } catch (err) {
       console.error(err);
