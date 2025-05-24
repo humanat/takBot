@@ -593,7 +593,7 @@ module.exports = {
     const filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
       let data = fs.readFileSync(filePath, "utf8");
-      data += "\n" + ply;
+      data += " " + ply;
       fs.writeFileSync(filePath, data);
     } catch (err) {
       console.error(err);
@@ -607,8 +607,8 @@ module.exports = {
     try {
       fs.appendFileSync(historyFilename, resultString);
       // Update PTN
-      let data = fs.readFileSync(ptnFilename, "utf8");
-      let lastTag = data.indexOf("]\n\n") + 2;
+      let data = fs.readFileSync(ptnFilename, "utf8").replace(/\]\[/g, "]\n[");
+      let lastTag = data.indexOf(/\]\s+[!\[]/) + 1;
       data =
         data.substring(0, lastTag) +
         tagDateTime() +
