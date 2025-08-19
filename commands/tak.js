@@ -99,6 +99,30 @@ module.exports = {
     )
     .addIntegerOption((option) =>
       option
+        .setName("caps1")
+        .setDescription("Cap stones for Player 1")
+        .setMinValue(0)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("flats1")
+        .setDescription("Flat stones for Player 1")
+        .setMinValue(3)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("caps2")
+        .setDescription("Cap stones for Player 2")
+        .setMinValue(0)
+    )
+    .addIntegerOption((option) =>
+      option
+        .setName("flats2")
+        .setDescription("Flat stones for Player 2")
+        .setMinValue(3)
+    )
+    .addIntegerOption((option) =>
+      option
         .setName("inactive-interval")
         .setDescription("Configure inactivity reminders")
         .addChoices(
@@ -204,6 +228,10 @@ module.exports = {
       // Piece counts
       const caps = options.getInteger("caps");
       const flats = options.getInteger("flats");
+      const caps1 = options.getInteger("caps1");
+      const flats1 = options.getInteger("flats1");
+      const caps2 = options.getInteger("caps2");
+      const flats2 = options.getInteger("flats2");
 
       // Inactivity Reminder Interval
       const inactiveInterval = options.getInteger("inactive-interval") || 864e5;
@@ -247,6 +275,10 @@ module.exports = {
 
       if (caps !== null) gameData.caps = caps;
       if (flats !== null) gameData.flats = flats;
+      if (caps1 !== null) gameData.caps1 = caps1;
+      if (flats2 !== null) gameData.flats2 = flats2;
+      if (caps1 !== null) gameData.caps1 = caps1;
+      if (flats2 !== null) gameData.flats2 = flats2;
       if (flatCounts === false) gameData.flatCounts = false;
       if (stackCounts === false) gameData.stackCounts = false;
       if (showRoads === false) gameData.showRoads = false;
