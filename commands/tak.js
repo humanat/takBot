@@ -276,8 +276,8 @@ module.exports = {
       if (caps !== null) gameData.caps = caps;
       if (flats !== null) gameData.flats = flats;
       if (caps1 !== null) gameData.caps1 = caps1;
-      if (flats2 !== null) gameData.flats2 = flats2;
-      if (caps1 !== null) gameData.caps1 = caps1;
+      if (flats1 !== null) gameData.flats1 = flats1;
+      if (caps2 !== null) gameData.caps2 = caps2;
       if (flats2 !== null) gameData.flats2 = flats2;
       if (flatCounts === false) gameData.flatCounts = false;
       if (stackCounts === false) gameData.stackCounts = false;
