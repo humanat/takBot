@@ -679,6 +679,9 @@ module.exports = {
             "Deleting channel. Please be patient, as this sometimes takes a while.",
             true
           );
+          if (channel.isThread()) {
+            return channel.delete();
+          }
           return channel.delete();
         } catch (err) {
           console.error(err);
