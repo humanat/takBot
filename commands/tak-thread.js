@@ -1,4 +1,4 @@
-const { ChannelType, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const { parseTPS, parseTheme } = require("../TPS-Ninja/src");
 const {
   clearDeleteTimer,
@@ -297,6 +297,8 @@ module.exports = {
           });
           destination = { channel };
           await sendMessage(interaction, `<#${channel.id}>`);
+          await channel.members.add(player1.id);
+          await channel.members.add(player2.id);
         } catch (err) {
           console.error(err);
           return sendMessage(
