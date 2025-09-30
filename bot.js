@@ -125,7 +125,7 @@ client.on(Discord.Events.MessageCreate, (msg) => {
   }
 });
 
-client.on(Discord.Events.ChannelDelete, function (channel) {
+const removeChannelFolder = function (channel) {
   const gameData = getGameData({ channel });
   const isOngoing = isGameOngoing({ channel });
   if (gameData) {
@@ -134,7 +134,10 @@ client.on(Discord.Events.ChannelDelete, function (channel) {
       deletePtnFile(gameData);
     }
   }
-});
+};
+
+client.on(Discord.Events.ChannelDelete, removeChannelFolder);
+client.on(Discord.Events.ThreadDelete, removeChannelFolder);
 
 client.on(Discord.Events.Error, (error) => {
   console.log(`ERROR: ${error}`);
