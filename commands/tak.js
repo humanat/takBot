@@ -164,11 +164,7 @@ module.exports = {
     if (!opponent) {
       return sendMessage(interaction, "Invalid opponent", true);
     } else if (isGameOngoing(interaction)) {
-      return sendMessage(
-        interaction,
-        "There's a game in progress! Use `/end` if you're sure no one is using this channel.",
-        true
-      );
+      return sendMessage(interaction, "There's a game in progress!", true);
     } else if (client.user.id === opponent.id) {
       return sendMessage(
         interaction,
