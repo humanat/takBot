@@ -1,4 +1,4 @@
-const { ChannelType, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const { parseTPS, parseTheme } = require("../TPS-Ninja/src");
 const {
   clearDeleteTimer,
@@ -164,11 +164,7 @@ module.exports = {
     if (!opponent) {
       return sendMessage(interaction, "Invalid opponent", true);
     } else if (isGameOngoing(interaction)) {
-      return sendMessage(
-        interaction,
-        "There's a game in progress! Use `/end` if you're sure no one is using this channel.",
-        true
-      );
+      return sendMessage(interaction, "There's a game in progress!", true);
     } else if (client.user.id === opponent.id) {
       return sendMessage(
         interaction,
@@ -288,15 +284,15 @@ module.exports = {
       let destination = interaction;
       let channelName = `${gameData.player1}-🆚-${gameData.player2}`;
       if (!isGameChannel(interaction)) {
-        // Make a new channel
+        // Make a new thread (which is a type of channel)
         try {
-          let channel = await interaction.guild.channels.create({
+          let channel = await interaction.channel.threads.create({
             name: channelName,
-            type: ChannelType.GuildText,
-            parent: interaction.channel.parent,
           });
           destination = { channel };
           await sendMessage(interaction, `<#${channel.id}>`);
+          await channel.members.add(player1.id);
+          await channel.members.add(player2.id);
         } catch (err) {
           console.error(err);
           return sendMessage(
