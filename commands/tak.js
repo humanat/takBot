@@ -82,7 +82,8 @@ module.exports = {
         .setDescription("Opening variation")
         .addChoices(
           { name: "Swap", value: "swap" },
-          { name: "No Swap", value: "no-swap" }
+          { name: "No Swap", value: "no-swap" },
+          { name: "Double Black Stack", value: "double black stack" }
         )
     )
     .addIntegerOption((option) =>
@@ -217,7 +218,11 @@ module.exports = {
 
       // Opening
       let opening = options.getString("opening") || "swap";
-      if (opening != "swap" && opening != "no-swap") {
+      if (
+        opening != "swap" &&
+        opening != "no-swap" &&
+        opening != "double black stack"
+      ) {
         return sendMessage(interaction, "Invalid opening.", true);
       }
 
