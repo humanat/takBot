@@ -14,6 +14,13 @@
 12. Invite your bot to your own Discord server by generating an invite link from the OAuth2 page of the Discord portal
     1. Add redirect URL `https://discordapp.com/oauth2/authorize?&client_id=<ClientID>&scope=bot` with your client ID.
     2. Select scopes `bot` and `messages.read`
-    3. Select the appropriate permissions
+    3. Select the appropriate permissions:
+       - Manage Channels
+       - Send Messages and Create Posts
+       - Send Messages in Threads and Posts
+       - Create Public Threads
+       - Attach Files
+       - Pin Messages
+       - Manage Threads and Posts
     4. Press the Copy button in the Scopes section
     5. Paste into a new browser tab
