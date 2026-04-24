@@ -6,6 +6,7 @@ const {
   clearInactiveTimer,
   getGameData,
   getLink,
+  pinMessage,
   renameChannel,
   sendMessage,
   setDeleteTimer,
@@ -48,12 +49,13 @@ module.exports = {
         result: result,
       });
     }
-    await sendMessage(
+    const finalMessage = await sendMessage(
       interaction,
       `GG <@${nextPlayer}>! Game Ended ${result}\nHere's a link to the completed game:\nID: [${
         gameData.gameId
       }](${getLink(gameData.gameId)})`
     );
+    await pinMessage(finalMessage);
     clearInactiveTimer(interaction);
     setDeleteTimer(interaction);
     return renameChannel(interaction, false);

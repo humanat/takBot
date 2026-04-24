@@ -291,7 +291,7 @@ module.exports = {
           result: result,
         });
       }
-      await module.exports.sendPngToDiscord(
+      const finalMessage = await module.exports.sendPngToDiscord(
         msg,
         canvas,
         `${ply} | GG <@${nextPlayer}>! Game Ended ${result}` +
@@ -300,6 +300,7 @@ module.exports = {
             gameData.gameId
           }](${module.exports.getLink(gameData.gameId)})`
       );
+      await module.exports.pinMessage(finalMessage);
       module.exports.clearInactiveTimer(msg);
       module.exports.setDeleteTimer(msg);
       return module.exports.renameChannel(msg, false);
@@ -887,10 +888,11 @@ module.exports = {
       };
       if (!msg.type || !msg.reply) {
         // Normal message
-        await msg.channel.send(content);
+        return await msg.channel.send(content);
       } else {
         // Assume slash command interaction
         await msg.reply(content);
+        return await msg.fetchReply();
       }
     } catch (err) {
       console.error(err);
@@ -899,17 +901,27 @@ module.exports = {
 
   async sendMessage(msg, content, ephemeral = false) {
     try {
-      const send =
-        msg.reply && !msg.replied && !msg.deferred
-          ? (content) => msg.reply({ content, ephemeral })
-          : (content) => msg.channel.send(content);
-      if (typeof content == "string" && content.length <= 2000) {
-        await send(content);
-      } else {
-        await send("I wanted to send a message but it was too long 😢");
+      const isReply = msg.reply && !msg.replied && !msg.deferred;
+      const payload =
+        typeof content == "string" && content.length <= 2000
+          ? content
+          : "I wanted to send a message but it was too long 😢";
+      if (isReply) {
+        await msg.reply({ content: payload, ephemeral });
+        return await msg.fetchReply();
       }
+      return await msg.channel.send(payload);
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  async pinMessage(message) {
+    if (!message || typeof message.pin !== "function") return;
+    try {
+      await message.pin();
+    } catch (err) {
+      console.error("Failed to pin message:", err);
     }
   },
 
