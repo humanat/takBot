@@ -187,13 +187,31 @@ module.exports = {
 
   // Helper functions
 
-  validPly(cmd) {
-    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*$/i.test(
-      cmd
+  parsePly(cmd) {
+    if (typeof cmd !== "string") return null;
+    cmd = cmd.trim();
+    const match = cmd.match(
+      /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*/i
     );
+    if (!match) return null;
+    const ply = match[0];
+    let rest = cmd.substring(ply.length).trim();
+    const comments = [];
+    while (rest.length) {
+      if (rest[0] !== "{") return null;
+      const end = rest.indexOf("}");
+      if (end === -1) return null;
+      comments.push(rest.substring(1, end).trim());
+      rest = rest.substring(end + 1).trim();
+    }
+    return { ply, comments };
   },
 
-  async handleMove(msg, ply) {
+  validPly(cmd) {
+    return !!module.exports.parsePly(cmd);
+  },
+
+  async handleMove(msg, raw) {
     if (!module.exports.isGameOngoing(msg)) return;
 
     let gameData = module.exports.getGameData(msg);
@@ -214,6 +232,13 @@ module.exports = {
       );
     }
 
+    const parsed = module.exports.parsePly(raw);
+    if (!parsed) {
+      return module.exports.sendMessage(msg, "Invalid move.", true);
+    }
+    let ply = parsed.ply;
+    const comments = parsed.comments;
+
     let canvas;
     try {
       ply = new Ply(ply.replace("’", "'").replace("”", '"')).toString();
@@ -230,7 +255,7 @@ module.exports = {
     }
 
     if (gameData.gameId) {
-      module.exports.addPlyToPtnFile(gameData.gameId, ply);
+      module.exports.addPlyToPtnFile(gameData.gameId, ply, comments);
     }
 
     let nextPlayer = gameData.player1Id;
@@ -242,7 +267,12 @@ module.exports = {
       if (!msg.channel.name.includes("🆚")) {
         module.exports.renameChannel(msg, true);
       }
-      const message = module.exports.getTurnMessage(gameData, canvas, ply);
+      const message = module.exports.getTurnMessage(
+        gameData,
+        canvas,
+        ply,
+        comments
+      );
       await module.exports.sendPngToDiscord(msg, canvas, message);
 
       module.exports.clearInactiveTimer(msg);
@@ -264,9 +294,11 @@ module.exports = {
       await module.exports.sendPngToDiscord(
         msg,
         canvas,
-        `${ply} | GG <@${nextPlayer}>! Game Ended ${result}\nHere's a link to the completed game:\nID: [${
-          gameData.gameId
-        }](${module.exports.getLink(gameData.gameId)})`
+        `${ply} | GG <@${nextPlayer}>! Game Ended ${result}` +
+          module.exports.formatComments(comments) +
+          `\nHere's a link to the completed game:\nID: [${
+            gameData.gameId
+          }](${module.exports.getLink(gameData.gameId)})`
       );
       module.exports.clearInactiveTimer(msg);
       module.exports.setDeleteTimer(msg);
@@ -442,12 +474,28 @@ module.exports = {
     }
   },
 
-  getTurnMessage(gameData, canvas, ply = gameData.hl) {
+  formatComments(comments) {
+    if (!comments || !comments.length) return "";
+    return (
+      "\n" +
+      comments
+        .map((c) =>
+          String(c)
+            .split("\n")
+            .map((line) => "> " + line)
+            .join("\n")
+        )
+        .join("\n")
+    );
+  },
+
+  getTurnMessage(gameData, canvas, ply = gameData.hl, comments) {
     const nextPlayer = gameData[`player${canvas.player}Id`];
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
       const lastPlayer = canvas.player == 1 ? 2 : 1;
       message = ply + " | " + message;
+      message += module.exports.formatComments(comments);
       if (/''|"/.test(ply)) {
         message += "\n*" + gameData[`player${lastPlayer}`];
         message += ply.includes("?")
@@ -470,7 +518,16 @@ module.exports = {
       if (gameData.gameId) {
         let filePath = path.join(__dirname, "ptn", `${gameData.gameId}.ptn`);
         let data = fs.readFileSync(filePath, "utf8");
-        data = data.substring(0, data.lastIndexOf(" "));
+        data = data.replace(/\s+$/, "");
+        while (data.endsWith("}")) {
+          const openIdx = data.lastIndexOf("{");
+          if (openIdx === -1) break;
+          data = data.substring(0, openIdx).replace(/\s+$/, "");
+        }
+        const sep = Math.max(data.lastIndexOf(" "), data.lastIndexOf("\n"));
+        if (sep !== -1) {
+          data = data.substring(0, sep);
+        }
         fs.writeFileSync(filePath, data);
       }
     } catch (err) {
@@ -589,11 +646,14 @@ module.exports = {
     return true;
   },
 
-  addPlyToPtnFile(gameId, ply) {
+  addPlyToPtnFile(gameId, ply, comments = []) {
     const filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
       let data = fs.readFileSync(filePath, "utf8");
       data += " " + ply;
+      for (const comment of comments) {
+        data += " {" + String(comment).replace(/[{}]/g, "") + "}";
+      }
       fs.writeFileSync(filePath, data);
     } catch (err) {
       console.error(err);
