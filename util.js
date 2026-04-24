@@ -814,7 +814,7 @@ module.exports = {
     const delay = DELETE_TIMER_MS;
     const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
     await msg.channel.send(
-      `This channel will self-destruct <t:${timestamp}:R> unless a new game is started.`
+      `This channel will self-destruct <t:${timestamp}:R> unless a new game is started (e.g. via \`/rematch\`).`
     );
     createTimer(
       {
