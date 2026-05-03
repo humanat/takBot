@@ -187,13 +187,31 @@ module.exports = {
 
   // Helper functions
 
-  validPly(cmd) {
-    return /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*$/i.test(
-      cmd
+  parsePly(cmd) {
+    if (typeof cmd !== "string") return null;
+    cmd = cmd.trim();
+    const match = cmd.match(
+      /^(\d)?([CcSs])?([a-hA-H])([1-8])(([<>+-])([1-8]+)?\*?)?['"’”?!]*/i
     );
+    if (!match) return null;
+    const ply = match[0];
+    let rest = cmd.substring(ply.length).trim();
+    const comments = [];
+    while (rest.length) {
+      if (rest[0] !== "{") return null;
+      const end = rest.indexOf("}");
+      if (end === -1) return null;
+      comments.push(rest.substring(1, end).trim());
+      rest = rest.substring(end + 1).trim();
+    }
+    return { ply, comments };
   },
 
-  async handleMove(msg, ply) {
+  validPly(cmd) {
+    return !!module.exports.parsePly(cmd);
+  },
+
+  async handleMove(msg, raw) {
     if (!module.exports.isGameOngoing(msg)) return;
 
     let gameData = module.exports.getGameData(msg);
@@ -214,6 +232,13 @@ module.exports = {
       );
     }
 
+    const parsed = module.exports.parsePly(raw);
+    if (!parsed) {
+      return module.exports.sendMessage(msg, "Invalid move.", true);
+    }
+    let ply = parsed.ply;
+    const comments = parsed.comments;
+
     let canvas;
     try {
       ply = new Ply(ply.replace("’", "'").replace("”", '"')).toString();
@@ -230,7 +255,7 @@ module.exports = {
     }
 
     if (gameData.gameId) {
-      module.exports.addPlyToPtnFile(gameData.gameId, ply);
+      module.exports.addPlyToPtnFile(gameData.gameId, ply, comments);
     }
 
     let nextPlayer = gameData.player1Id;
@@ -242,7 +267,12 @@ module.exports = {
       if (!msg.channel.name.includes("🆚")) {
         module.exports.renameChannel(msg, true);
       }
-      const message = module.exports.getTurnMessage(gameData, canvas, ply);
+      const message = module.exports.getTurnMessage(
+        gameData,
+        canvas,
+        ply,
+        comments
+      );
       await module.exports.sendPngToDiscord(msg, canvas, message);
 
       module.exports.clearInactiveTimer(msg);
@@ -261,13 +291,16 @@ module.exports = {
           result: result,
         });
       }
-      await module.exports.sendPngToDiscord(
+      const finalMessage = await module.exports.sendPngToDiscord(
         msg,
         canvas,
-        `${ply} | GG <@${nextPlayer}>! Game Ended ${result}\nHere's a link to the completed game:\nID: [${
-          gameData.gameId
-        }](${module.exports.getLink(gameData.gameId)})`
+        `${ply} | GG <@${nextPlayer}>! Game Ended ${result}` +
+          module.exports.formatComments(comments) +
+          `\nHere's a link to the completed game:\nID: [${
+            gameData.gameId
+          }](${module.exports.getLink(gameData.gameId)})`
       );
+      await module.exports.pinMessage(finalMessage);
       module.exports.clearInactiveTimer(msg);
       module.exports.setDeleteTimer(msg);
       return module.exports.renameChannel(msg, false);
@@ -442,12 +475,28 @@ module.exports = {
     }
   },
 
-  getTurnMessage(gameData, canvas, ply = gameData.hl) {
+  formatComments(comments) {
+    if (!comments || !comments.length) return "";
+    return (
+      "\n" +
+      comments
+        .map((c) =>
+          String(c)
+            .split("\n")
+            .map((line) => "> " + line)
+            .join("\n")
+        )
+        .join("\n")
+    );
+  },
+
+  getTurnMessage(gameData, canvas, ply = gameData.hl, comments) {
     const nextPlayer = gameData[`player${canvas.player}Id`];
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
       const lastPlayer = canvas.player == 1 ? 2 : 1;
       message = ply + " | " + message;
+      message += module.exports.formatComments(comments);
       if (/''|"/.test(ply)) {
         message += "\n*" + gameData[`player${lastPlayer}`];
         message += ply.includes("?")
@@ -470,7 +519,16 @@ module.exports = {
       if (gameData.gameId) {
         let filePath = path.join(__dirname, "ptn", `${gameData.gameId}.ptn`);
         let data = fs.readFileSync(filePath, "utf8");
-        data = data.substring(0, data.lastIndexOf(" "));
+        data = data.replace(/\s+$/, "");
+        while (data.endsWith("}")) {
+          const openIdx = data.lastIndexOf("{");
+          if (openIdx === -1) break;
+          data = data.substring(0, openIdx).replace(/\s+$/, "");
+        }
+        const sep = Math.max(data.lastIndexOf(" "), data.lastIndexOf("\n"));
+        if (sep !== -1) {
+          data = data.substring(0, sep);
+        }
         fs.writeFileSync(filePath, data);
       }
     } catch (err) {
@@ -589,11 +647,14 @@ module.exports = {
     return true;
   },
 
-  addPlyToPtnFile(gameId, ply) {
+  addPlyToPtnFile(gameId, ply, comments = []) {
     const filePath = path.join(__dirname, "ptn", `${gameId}.ptn`);
     try {
       let data = fs.readFileSync(filePath, "utf8");
       data += " " + ply;
+      for (const comment of comments) {
+        data += " {" + String(comment).replace(/[{}]/g, "") + "}";
+      }
       fs.writeFileSync(filePath, data);
     } catch (err) {
       console.error(err);
@@ -753,7 +814,7 @@ module.exports = {
     const delay = DELETE_TIMER_MS;
     const timestamp = Math.round((new Date().getTime() + delay) / 1e3);
     await msg.channel.send(
-      `This channel will self-destruct <t:${timestamp}:R> unless a new game is started.`
+      `This channel will self-destruct <t:${timestamp}:R> unless a new game is started (e.g. via \`/rematch\`).`
     );
     createTimer(
       {
@@ -827,10 +888,11 @@ module.exports = {
       };
       if (!msg.type || !msg.reply) {
         // Normal message
-        await msg.channel.send(content);
+        return await msg.channel.send(content);
       } else {
         // Assume slash command interaction
         await msg.reply(content);
+        return await msg.fetchReply();
       }
     } catch (err) {
       console.error(err);
@@ -839,17 +901,27 @@ module.exports = {
 
   async sendMessage(msg, content, ephemeral = false) {
     try {
-      const send =
-        msg.reply && !msg.replied && !msg.deferred
-          ? (content) => msg.reply({ content, ephemeral })
-          : (content) => msg.channel.send(content);
-      if (typeof content == "string" && content.length <= 2000) {
-        await send(content);
-      } else {
-        await send("I wanted to send a message but it was too long 😢");
+      const isReply = msg.reply && !msg.replied && !msg.deferred;
+      const payload =
+        typeof content == "string" && content.length <= 2000
+          ? content
+          : "I wanted to send a message but it was too long 😢";
+      if (isReply) {
+        await msg.reply({ content: payload, ephemeral });
+        return await msg.fetchReply();
       }
+      return await msg.channel.send(payload);
     } catch (err) {
       console.error(err);
+    }
+  },
+
+  async pinMessage(message) {
+    if (!message || typeof message.pin !== "function") return;
+    try {
+      await message.pin();
+    } catch (err) {
+      console.error("Failed to pin message:", err);
     }
   },
 
