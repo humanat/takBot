@@ -291,10 +291,11 @@ module.exports = {
           result: result,
         });
       }
+      const echoPly = module.exports.formatPlyForEcho(gameData, canvas, ply);
       const finalMessage = await module.exports.sendPngToDiscord(
         msg,
         canvas,
-        `${ply} | GG <@${nextPlayer}>! Game Ended ${result}` +
+        `${echoPly} | GG <@${nextPlayer}>! Game Ended ${result}` +
           module.exports.formatComments(comments) +
           `\nHere's a link to the completed game:\nID: [${
             gameData.gameId
@@ -490,12 +491,30 @@ module.exports = {
     );
   },
 
+  formatPlyForEcho(gameData, canvas, ply) {
+    if (!ply) return ply;
+    // For the Double Black Stack opening, echo Player 1's first move with a
+    // leading piece count of 2 (e.g. "2a1") to reflect that two stones were
+    // placed. Any other leading count the player typed (e.g. "3a1") is
+    // silently rewritten to "2".
+    if (
+      gameData.opening === "double black stack" &&
+      canvas.linenum === 1 &&
+      canvas.player === 2 &&
+      !/[<>+\-]/.test(ply)
+    ) {
+      return "2" + ply.replace(/^\d+/, "");
+    }
+    return ply;
+  },
+
   getTurnMessage(gameData, canvas, ply = gameData.hl, comments) {
     const nextPlayer = gameData[`player${canvas.player}Id`];
     let message = `Your turn ${canvas.linenum}, <@${nextPlayer}>.`;
     if (ply) {
       const lastPlayer = canvas.player == 1 ? 2 : 1;
-      message = ply + " | " + message;
+      const echoPly = module.exports.formatPlyForEcho(gameData, canvas, ply);
+      message = echoPly + " | " + message;
       message += module.exports.formatComments(comments);
       if (/''|"/.test(ply)) {
         message += "\n*" + gameData[`player${lastPlayer}`];
