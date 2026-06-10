@@ -20,6 +20,7 @@ Use `/tak @opponent` to start a new game. You can specify any of the following:
 **Standalone commands:**
 
 - `delete` to delete the current game channel
+- `draw` to offer a draw, or accept your opponent's draw offer
 - `end` to cancel the current game
 - `history` to see a list of finished games and their IDs. Specify a page number to see older games
 - `info` to display information about the current game

@@ -266,6 +266,8 @@ module.exports = {
     let nextPlayer = gameData.player1Id;
     if (gameData.turnMarker === "1") nextPlayer = gameData.player2Id;
 
+    module.exports.clearDrawOffer(msg);
+
     if (!canvas.isGameEnd) {
       // Game is still in progress
       module.exports.saveGameData(msg, { tps: canvas.id, ply });
@@ -396,6 +398,28 @@ module.exports = {
     try {
       fs.mkdirSync(tpsDir, { recursive: true });
       fs.writeFileSync(path.join(tpsDir, filename + ".tps"), tps);
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  clearDrawOffer(msg) {
+    const metaPath = path.join(
+      __dirname,
+      "data",
+      msg.channelId || msg.channel.id,
+      "meta",
+      "game.json"
+    );
+    try {
+      if (!fs.existsSync(metaPath)) {
+        return;
+      }
+      const data = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+      if (data.drawOffer) {
+        delete data.drawOffer;
+        fs.writeFileSync(metaPath, JSON.stringify(data));
+      }
     } catch (err) {
       console.error(err);
     }
