@@ -55,9 +55,9 @@ module.exports = {
         gameData.gameId
       }](${getLink(gameData.gameId)})`
     );
-    await pinMessage(finalMessage);
     clearInactiveTimer(interaction);
     setDeleteTimer(interaction);
+    await pinMessage(finalMessage);
     return renameChannel(interaction, false);
   },
 };

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const {
+  clearDrawOffer,
   clearInactiveTimer,
   deleteLastTurn,
   drawBoard,
@@ -53,6 +54,7 @@ module.exports = {
     }
 
     deleteLastTurn(interaction, gameData);
+    clearDrawOffer(interaction);
     gameData = getGameData(interaction);
     const canvas = drawBoard(gameData, getTheme(interaction));
     const message = "Undo complete!\n" + getTurnMessage(gameData, canvas);

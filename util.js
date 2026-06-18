@@ -8,6 +8,11 @@ const { Ply } = require("./TPS-Ninja/src/Ply");
 
 // Constants
 const DELETE_TIMER_MS = 864e5;
+// When the bot restarts and finds an inactive reminder that came due while it
+// was offline, wait this base delay (plus a random stagger) before firing,
+// rather than bursting all overdue reminders the instant we reconnect.
+const REMINDER_STARTUP_GRACE_MS = 6e4; // 1 minute
+const REMINDER_STARTUP_JITTER_MS = 3e5; // up to 5 minutes of stagger
 const INACTIVE_MESSAGES = [
   "It's been a while since your last move. Please take your turn soon, @player.",
   "Ready to jump back in, @player? The game is waiting for your move!",
@@ -97,7 +102,7 @@ function clearTimer(type, channelId, timestamp) {
       timerId = deleteTimers[channelId];
       if (timerId) {
         clearTimeout(timerId);
-        delete deleteTimers[timerId];
+        delete deleteTimers[channelId];
       }
       filePath = path.join(timerDir, `${type}.json`);
       break;
@@ -105,7 +110,7 @@ function clearTimer(type, channelId, timestamp) {
       timerId = inactiveTimers[channelId];
       if (timerId) {
         clearTimeout(timerId);
-        delete inactiveTimers[timerId];
+        delete inactiveTimers[channelId];
       }
       filePath = path.join(timerDir, `${type}.json`);
       break;
@@ -261,12 +266,11 @@ module.exports = {
     let nextPlayer = gameData.player1Id;
     if (gameData.turnMarker === "1") nextPlayer = gameData.player2Id;
 
+    module.exports.clearDrawOffer(msg);
+
     if (!canvas.isGameEnd) {
       // Game is still in progress
       module.exports.saveGameData(msg, { tps: canvas.id, ply });
-      if (!msg.channel.name.includes("🆚")) {
-        module.exports.renameChannel(msg, true);
-      }
       const message = module.exports.getTurnMessage(
         gameData,
         canvas,
@@ -394,6 +398,28 @@ module.exports = {
     try {
       fs.mkdirSync(tpsDir, { recursive: true });
       fs.writeFileSync(path.join(tpsDir, filename + ".tps"), tps);
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  clearDrawOffer(msg) {
+    const metaPath = path.join(
+      __dirname,
+      "data",
+      msg.channelId || msg.channel.id,
+      "meta",
+      "game.json"
+    );
+    try {
+      if (!fs.existsSync(metaPath)) {
+        return;
+      }
+      const data = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+      if (data.drawOffer) {
+        delete data.drawOffer;
+        fs.writeFileSync(metaPath, JSON.stringify(data));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -781,9 +807,12 @@ module.exports = {
       console.log("Channel not found:", channelId);
       return false;
     }
-    const delay = timestamp * 1e3 - new Date().getTime();
+    let delay = timestamp * 1e3 - new Date().getTime();
     switch (type) {
       case "delete":
+        if (deleteTimers[channelId]) {
+          clearTimeout(deleteTimers[channelId]);
+        }
         deleteTimers[channelId] = setTimeout(
           module.exports.handleDelete,
           delay,
@@ -797,6 +826,21 @@ module.exports = {
         }
         if (!index) {
           index = 0;
+        }
+        if (!interval) {
+          interval = DELETE_TIMER_MS;
+        }
+        if (delay <= 0) {
+          // The scheduled time already passed (e.g. the bot was offline), so
+          // the player is genuinely overdue. Fire soon, after a short
+          // staggered grace delay, rather than bursting all overdue reminders
+          // the instant we reconnect. The normal cadence resumes afterward.
+          delay =
+            REMINDER_STARTUP_GRACE_MS +
+            Math.floor(Math.random() * REMINDER_STARTUP_JITTER_MS);
+        }
+        if (inactiveTimers[channelId]) {
+          clearTimeout(inactiveTimers[channelId]);
         }
         inactiveTimers[channelId] = setTimeout(() => {
           module.exports.sendMessage(
