@@ -429,6 +429,31 @@ module.exports = {
     return playerId === gameData.player1Id || playerId === gameData.player2Id;
   },
 
+  // The board preferences for a new game, as the options the board is drawn
+  // with: whatever was given with the command, and for the rest, what the
+  // channel's previous game used. Only departures from the defaults are kept.
+  getBoardPrefs(given, previous) {
+    previous = previous || {};
+    const prefs = {};
+    ["flatCounts", "stackCounts", "showRoads"].forEach((key) => {
+      const value = given[key] ?? previous[key];
+      if (value === false) prefs[key] = false;
+    });
+    const highlight =
+      given.highlight ||
+      (previous.hlPieces
+        ? "pieces"
+        : previous.hlSquares === false
+        ? "none"
+        : "squares");
+    if (highlight === "pieces") {
+      prefs.hlPieces = true;
+    } else if (highlight === "none") {
+      prefs.hlSquares = false;
+    }
+    return prefs;
+  },
+
   drawBoard(gameData, theme, ply) {
     let moveNumber = gameData.moveNumber;
     if (!ply && gameData.hl && gameData.turnMarker === "1") {

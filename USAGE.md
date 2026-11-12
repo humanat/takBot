@@ -10,9 +10,12 @@ Use `/tak @opponent` to start a new game. Options:
 - `caps`, `flats`: Override the stone counts per player
 - `inactive-interval`: Time between inactivity reminders
 - `theme` _(default `discord`):_ Board and piece theme
+- `highlight` _(default `squares`):_ Mark the last move by its `squares` or `pieces`, or `none`
 - `flat-counts`, `stack-counts`, `road-connections` _(default `true`):_ Show these on the board
 - `allow-links` _(default `true`):_ Allow requests for ptn.ninja links
 - `blind`: Never show the board
+
+The theme, highlight and the three board toggles carry over to the next game in the same channel.
 
 **Other commands:**
 
