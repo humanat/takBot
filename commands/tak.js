@@ -4,6 +4,8 @@ const {
   clearDeleteTimer,
   createPtnFile,
   drawBoard,
+  getBoardPrefs,
+  getGameData,
   getTheme,
   getTurnMessage,
   isGameChannel,
@@ -140,6 +142,16 @@ module.exports = {
         .setDescription("Theme name or JSON")
         .setAutocomplete(true)
     )
+    .addStringOption((option) =>
+      option
+        .setName("highlight")
+        .setDescription("Mark the last move by its squares (default) or pieces")
+        .addChoices(
+          { name: "Squares", value: "squares" },
+          { name: "Pieces", value: "pieces" },
+          { name: "None", value: "none" }
+        )
+    )
     .addBooleanOption((option) =>
       option.setName("flat-counts").setDescription("Show flat counts (default)")
     )
@@ -249,10 +261,18 @@ module.exports = {
         theme = getTheme(interaction);
       }
 
+      // Board preferences, remembered from the channel's previous game
+      const boardPrefs = getBoardPrefs(
+        {
+          flatCounts: options.getBoolean("flat-counts"),
+          stackCounts: options.getBoolean("stack-counts"),
+          showRoads: options.getBoolean("road-connections"),
+          highlight: options.getString("highlight"),
+        },
+        isGameChannel(interaction) ? getGameData(interaction) : null
+      );
+
       // Toggles
-      const flatCounts = options.getBoolean("flat-counts");
-      const stackCounts = options.getBoolean("stack-counts");
-      const showRoads = options.getBoolean("road-connections");
       const allowLinks = options.getBoolean("allow-links");
       const blind = options.getBoolean("blind");
 
@@ -280,9 +300,7 @@ module.exports = {
       if (flats1 !== null) gameData.flats1 = flats1;
       if (caps2 !== null) gameData.caps2 = caps2;
       if (flats2 !== null) gameData.flats2 = flats2;
-      if (flatCounts === false) gameData.flatCounts = false;
-      if (stackCounts === false) gameData.stackCounts = false;
-      if (showRoads === false) gameData.showRoads = false;
+      Object.assign(gameData, boardPrefs);
       if (allowLinks === false) gameData.allowLinks = false;
       if (blind) gameData.blind = true;
 

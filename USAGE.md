@@ -1,43 +1,39 @@
 # takBot
 
-Use `/tak @opponent` to start a new game. You can specify any of the following:
+Use `/tak @opponent` to start a new game. Options:
 
 - `size` _(default `6`):_ Board size
-- `komi` _(default `0`):_ A flat-score bonus for the second player
-- `color` Seats the message author as White (Player 1) or Black (Player 2)
-- `tps`: Begins the game from the specified board state
-- `opening` _(default `swap`):_ Specify an opening variation
-- `caps`: Override the number of cap stones per player
-- `flats`: Override the number of flat stones per player
-- `inactive-interval` Specifies the time interval between inactivity reminders
-- `theme` _(default `discord`):_ Uses the specified theme
-- `flat-counts` _(default `true`)_: Show flat counts
-- `stack-counts` _(default `true`)_: Show stack counts
-- `road-connections` _(default `true`)_: Show road connections
-- `allow-links` _(default `true`)_: Allow requests for ptn.ninja links
-- `blind` _(boolean):_ Never show the board
+- `komi` _(default `0`):_ Flat-score bonus for the second player
+- `color`: Play as White (Player 1) or Black (Player 2); random by default
+- `tps`: Start from this board state
+- `opening` _(default `swap`):_ Opening variation
+- `caps`, `flats`: Override the stone counts per player
+- `inactive-interval`: Time between inactivity reminders
+- `theme` _(default `discord`):_ Board and piece theme
+- `highlight` _(default `squares`):_ Mark the last move by its `squares` or `pieces`, or `none`
+- `flat-counts`, `stack-counts`, `road-connections` _(default `true`):_ Show these on the board
+- `allow-links` _(default `true`):_ Allow requests for ptn.ninja links
+- `blind`: Never show the board
 
-**Standalone commands:**
+The theme, highlight and the three board toggles carry over to the next game in the same channel.
 
-- `delete` to delete the current game channel
-- `draw` to offer a draw, or accept your opponent's draw offer
-- `end` to cancel the current game
-- `history` to see a list of finished games and their IDs. Specify a page number to see older games
-- `info` to display information about the current game
-- `ptn` to display ptn of the current game
-- `link` to get a ptn.ninja link for the current game, or the game specified by ID
-- `redraw` to re-send the last board of the current game
-- `rematch` to swap seats and play again using the same game settings
-- `reminder` to set a reminder ping. Takes one or more time arguments (e.g. `/reminder 1h 30m`)
-- `resign` to forfeit the current game
-- `rng` to generate a random number betwen 1 and some other number
-- `theme` to set the theme for the current channel
-- `themes` to see a list of themes for the board and pieces
-- `undo` to undo your previous move
+**Other commands:**
 
-**Note:**
-
-- By default, player seats are assigned randomly.
+- `delete`: Delete the current game channel
+- `draw`: Offer a draw, or accept your opponent's offer
+- `end`: Cancel the current game
+- `history`: List finished games and their IDs; give a page number for older ones
+- `info`: Show information about the current game
+- `ptn`: Show the PTN of the current game
+- `link`: Get a ptn.ninja link for the current game, or for a game by ID
+- `redraw`: Re-send the last board
+- `rematch`: Swap seats and play again with the same settings
+- `reminder`: Set a reminder ping, e.g. `/reminder 1h 30m`
+- `resign`: Forfeit the current game
+- `rng`: Generate a random number between 1 and another number
+- `theme`: Set the theme for the current channel
+- `themes`: List the available themes
+- `undo`: Undo your previous move
 
 **How to:**
 
